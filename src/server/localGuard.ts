@@ -57,3 +57,50 @@ export function isLocalRequest(request: LocalRequest): boolean {
 
   return true;
 }
+
+/**
+ * How this deployment decides who may mint a Speech credential.
+ *
+ * `local`         — a developer machine. Trust is "the request came from this machine",
+ *                   enforced by the Host header (see above).
+ * `authenticated` — deployed to Azure behind Easy Auth. The platform validates the Entra
+ *                   token and injects `X-MS-CLIENT-PRINCIPAL-ID`, stripping any
+ *                   client-supplied copy at the front door, so its presence is proof of a
+ *                   signed-in user.
+ */
+export type AccessMode = "local" | "authenticated";
+
+export interface AccessRequest {
+  readonly mode: AccessMode;
+  readonly host?: string | undefined;
+  readonly origin?: string | undefined;
+  readonly port: number;
+  /** From `X-MS-CLIENT-PRINCIPAL-ID`. Only trusted in `authenticated` mode. */
+  readonly principalId?: string | undefined;
+  readonly allowedOrigins?: readonly string[];
+}
+
+export interface AccessVerdict {
+  readonly allowed: boolean;
+  readonly reason?: string;
+}
+
+export function isAuthorizedRequest(request: AccessRequest): AccessVerdict {
+  if (request.mode === "authenticated") {
+    // Deliberately does not check the host: the deployed hostname is not known at build
+    // time, and Easy Auth has already established who the caller is.
+    if (!request.principalId || request.principalId.trim().length === 0) {
+      return {
+        allowed: false,
+        reason: "Please sign in. This deployment requires an authenticated Microsoft Entra user.",
+      };
+    }
+    return { allowed: true };
+  }
+
+  // Local mode ignores any principal header entirely — nothing strips it here, so it
+  // would be trivially forgeable and must never grant access.
+  return isLocalRequest(request)
+    ? { allowed: true }
+    : { allowed: false, reason: "This endpoint is only available to this machine." };
+}

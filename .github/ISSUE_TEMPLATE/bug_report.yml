@@ -1,0 +1,60 @@
+name: Bug report
+description: Something is not working
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please do not include tokens, keys,
+        resource IDs or anything else from your subscription in this issue.
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did this happen?
+      options:
+        - Running locally (npm run dev)
+        - Deploying (azd up)
+        - Running the deployed site
+        - Tests or the gate
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: languages
+    attributes:
+      label: Which language pair?
+      placeholder: "English → Hindi"
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Output of `node --version`, `az version --output tsv`, `azd version`, and your OS and browser.
+      render: shell
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: Console or terminal output. Redact anything identifying your subscription.
+      render: shell

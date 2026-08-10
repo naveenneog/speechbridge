@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isLocalRequest } from "../src/server/localGuard.js";
+import { isLocalRequest, isAuthorizedRequest } from "../src/server/localGuard.js";
 
 const PORT = 8790;
 const DEV_ORIGINS = ["http://localhost:5173"];
@@ -91,5 +91,81 @@ describe("local request guard", () => {
 
   it("is case-insensitive about the hostname", () => {
     expect(isLocalRequest({ host: `LocalHost:${PORT}`, port: PORT })).toBe(true);
+  });
+});
+
+describe("credential access guard", () => {
+  describe("local mode", () => {
+    it("allows a genuine loopback request", () => {
+      const verdict = isAuthorizedRequest({ mode: "local", host: `localhost:${PORT}`, port: PORT });
+      expect(verdict.allowed).toBe(true);
+    });
+
+    it("refuses a request from another host", () => {
+      const verdict = isAuthorizedRequest({
+        mode: "local",
+        host: `attacker.example:${PORT}`,
+        port: PORT,
+      });
+      expect(verdict.allowed).toBe(false);
+      expect(verdict.reason).toMatch(/this machine/i);
+    });
+  });
+
+  describe("authenticated mode", () => {
+    it("allows a request carrying an Entra principal from the platform", () => {
+      // App Service / Container Apps Easy Auth validates the token and injects this
+      // header, stripping any client-supplied copy at the front door.
+      const verdict = isAuthorizedRequest({
+        mode: "authenticated",
+        host: "speechbridge.azurewebsites.net",
+        port: 443,
+        principalId: "8f3c-...-a91",
+      });
+      expect(verdict.allowed).toBe(true);
+    });
+
+    it("refuses a request with no authenticated principal", () => {
+      // Catches Easy Auth being misconfigured to allow anonymous access — otherwise the
+      // credential endpoint would be open to the internet.
+      const verdict = isAuthorizedRequest({
+        mode: "authenticated",
+        host: "speechbridge.azurewebsites.net",
+        port: 443,
+      });
+      expect(verdict.allowed).toBe(false);
+      expect(verdict.reason).toMatch(/sign in|authenticat/i);
+    });
+
+    it("refuses an empty principal header", () => {
+      const verdict = isAuthorizedRequest({
+        mode: "authenticated",
+        host: "speechbridge.azurewebsites.net",
+        port: 443,
+        principalId: "   ",
+      });
+      expect(verdict.allowed).toBe(false);
+    });
+
+    it("does not require a loopback host when deployed", () => {
+      const verdict = isAuthorizedRequest({
+        mode: "authenticated",
+        host: "anything.azurewebsites.net",
+        port: 443,
+        principalId: "user-1",
+      });
+      expect(verdict.allowed).toBe(true);
+    });
+
+    it("ignores a principal header in local mode, where it could be forged", () => {
+      // Nothing strips this header locally, so it must never grant access there.
+      const verdict = isAuthorizedRequest({
+        mode: "local",
+        host: "attacker.example:8790",
+        port: 8790,
+        principalId: "forged",
+      });
+      expect(verdict.allowed).toBe(false);
+    });
   });
 });

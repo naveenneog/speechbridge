@@ -12,6 +12,8 @@ export interface ServerConfig {
   readonly port: number;
   /** Interface to bind. Loopback by default — see the comment in `loadConfig`. */
   readonly host: string;
+  /** How callers of the credential endpoint are authorised. */
+  readonly accessMode: AccessMode;
 }
 
 const DEFAULT_PORT = 8790;
@@ -22,6 +24,8 @@ const DEFAULT_PORT = 8790;
  * mint Speech tokens against this subscription. Widening it must be a conscious act.
  */
 const DEFAULT_HOST = "127.0.0.1";
+
+import type { AccessMode } from "./localGuard.js";
 
 const ALLOWED_ENDPOINT_SUFFIX = ".cognitiveservices.azure.com";
 
@@ -69,7 +73,22 @@ function validateEndpoint(endpoint: string): string {
 export function loadConfig(env: Record<string, string | undefined>): ServerConfig {
   const endpoint = validateEndpoint(required(env, "SPEECH_ENDPOINT").replace(/\/+$/, ""));
   const region = required(env, "SPEECH_REGION");
-  const host = env["HOST"]?.trim() || DEFAULT_HOST;
+
+  // WEBSITE_SITE_NAME is set only by App Service. There, the platform terminates TLS and
+  // forwards to us, so loopback-only would make the site unreachable — and Easy Auth is
+  // in front, so an authenticated principal is the right trust signal.
+  const inAppService = Boolean(env["WEBSITE_SITE_NAME"]?.trim());
+
+  const rawMode = env["ACCESS_MODE"]?.trim();
+  let accessMode: AccessMode = inAppService ? "authenticated" : "local";
+  if (rawMode) {
+    if (rawMode !== "local" && rawMode !== "authenticated") {
+      throw new Error(`ACCESS_MODE must be "local" or "authenticated", got "${rawMode}".`);
+    }
+    accessMode = rawMode;
+  }
+
+  const host = env["HOST"]?.trim() || (inAppService ? "0.0.0.0" : DEFAULT_HOST);
 
   const rawPort = env["PORT"]?.trim();
   let port = DEFAULT_PORT;
@@ -80,5 +99,6 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
     }
   }
 
-  return { endpoint, region, port, host };
+  return { endpoint, region, port, host, accessMode };
 }
+

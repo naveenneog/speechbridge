@@ -6,6 +6,18 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Added
+- **One-command deployment to Azure.** `azd up` provisions the AI Services account (keyless,
+  custom subdomain), a managed identity with the Speech User role, App Service, and
+  monitoring — then deploys the app, creates the Microsoft Entra app registration and turns
+  on sign-in. (P-15, ADR-0010)
+- The deployed site **requires sign-in**, and refuses to mint Azure credentials for anyone
+  the platform has not authenticated. If authentication cannot be configured, the app stops
+  working rather than exposing your subscription. (P-15)
+- Accelerator documentation: architecture diagram, verified cost figures, security notice,
+  responsible-AI guidance on where machine interpretation must not be used, contribution
+  guide, dev container and CI/CD pipeline. (P-15)
+
+### Added
 - Project foundation: charter, roadmap, unknowns register, and a verified toolchain
   (TypeScript 5.9.3, Vite 8.2.0, Vitest 4.1.10, Express 5.2.1, Speech SDK 1.51.0). (P-0)
 - 16 languages to translate between — English, Hindi, Kannada, Tamil, Telugu, Marathi,

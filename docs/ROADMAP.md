@@ -24,7 +24,16 @@
       (lifecycle race, never-settling playback promise, per-utterance latency, LAN exposure);
       all fixed with regression tests. See ADR-0008.
 
-## Next — M2: What the council raised and we did not do yet
+# Roadmap
+
+## Now — M2: Deployable accelerator (target: 2026-08-10)
+
+- [x] P-15 Azure Solution Accelerator: Bicep, azd, managed identity, Entra sign-in
+      Given an Azure subscription, when `azd up` runs, then the app is provisioned with no
+      keys, protected by Microsoft Entra sign-in, and refuses to mint credentials for an
+      unauthenticated caller. See ADR-0010.
+
+## Next — M3: What the council raised and we have not done yet
 
 - [ ] P-8  Push a refreshed token onto a running recognizer (U-13)
       Today a single held floor is bounded by the ~10-minute token life. Given a floor held

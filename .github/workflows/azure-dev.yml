@@ -1,0 +1,73 @@
+name: Deploy with azd
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Federated credentials (OIDC) — no secrets stored in GitHub, matching the
+# no-keys-anywhere design of the accelerator itself.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Gate — the definition of done
+        run: node .ironclad/gate.mjs --stage packet
+
+      - name: Verify the ARM template matches the Bicep
+        run: |
+          az bicep build --file infra/main.bicep --outfile /tmp/azuredeploy.json
+          if ! diff -q <(jq -S . azuredeploy.json) <(jq -S . /tmp/azuredeploy.json) > /dev/null; then
+            echo "::error::azuredeploy.json is out of date. Run:"
+            echo "  az bicep build --file infra/main.bicep --outfile azuredeploy.json"
+            exit 1
+          fi
+          echo "azuredeploy.json is current."
+
+  deploy:
+    name: Provision and deploy
+    runs-on: ubuntu-latest
+    needs: build
+    # Only runs when the repository has been configured for deployment.
+    if: ${{ vars.AZURE_CLIENT_ID != '' }}
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Sign in with federated credentials
+        run: |
+          azd auth login \
+            --client-id "$AZURE_CLIENT_ID" \
+            --federated-credential-provider github \
+            --tenant-id "$AZURE_TENANT_ID"
+
+      - name: Provision infrastructure
+        run: azd provision --no-prompt
+
+      - name: Deploy the application
+        run: azd deploy --no-prompt

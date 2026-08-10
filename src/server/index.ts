@@ -35,20 +35,23 @@ const clientDir = resolve(here, "../../dist/client");
 const app = createApp({
   broker,
   port: config.port,
+  accessMode: config.accessMode,
   // Vite serves the client on its own origin in development.
   allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
   ...(existsSync(clientDir) ? { clientDir } : {}),
 });
 
 const server = app.listen(config.port, config.host, () => {
-  console.log(`SpeechBridge token broker listening on http://${config.host}:${config.port}`);
+  console.log(`SpeechBridge listening on http://${config.host}:${config.port}`);
   console.log(`  resource : ${config.endpoint}`);
   console.log(`  region   : ${config.region}`);
   console.log(`  auth     : Microsoft Entra ID (no keys — see docs/adr/0002)`);
-  if (config.host !== "127.0.0.1") {
+  console.log(`  access   : ${config.accessMode}`);
+  if (config.host !== "127.0.0.1" && config.accessMode === "local") {
     console.warn(
-      `  WARNING  : bound to ${config.host}, so anything that can reach this port can mint ` +
-        `Speech tokens against your subscription. Unset HOST to return to loopback only.`,
+      `  WARNING  : bound to ${config.host} in local access mode, so anything that can ` +
+        `reach this port can mint Speech tokens against your subscription. Unset HOST, ` +
+        `or set ACCESS_MODE=authenticated behind Microsoft Entra authentication.`,
     );
   }
 });

@@ -2,6 +2,7 @@
   "name": "speech-bridge",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "Near-realtime bidirectional speech translation over Azure AI Speech, with keyless Entra ID auth.",
   "engines": {
@@ -11,9 +12,11 @@
     "dev": "concurrently -n server,client -c yellow,cyan \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
-    "build": "vite build",
+    "build": "npm run build:server && npm run build:client",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
     "preview": "vite preview",
-    "start": "tsx src/server/index.ts",
+    "start": "node dist/server/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
@@ -44,6 +47,8 @@
     "vitest": "4.1.10"
   }
 }
+
+
 
 
 

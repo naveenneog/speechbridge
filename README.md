@@ -1,216 +1,272 @@
-# SpeechBridge
+<!-- markdownlint-disable MD033 -->
+# SpeechBridge — near-realtime interpreted conversation on Azure
 
-**Near-realtime, bidirectional speech translation on Azure AI Speech.**
+[![Open in GitHub Codespaces](https://img.shields.io/static/v1?style=for-the-badge&label=GitHub+Codespaces&message=Open&color=brightgreen&logo=github)](https://codespaces.new/Azure-Samples/speechbridge)
+[![Open in Dev Containers](https://img.shields.io/static/v1?style=for-the-badge&label=Dev+Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https://github.com/Azure-Samples/speechbridge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE.md)
 
-Two people who don't share a language sit at one laptop. Each speaks naturally; the other hears
-it in their own language, in a natural voice, about a second and a half later. Live captions
-appear while you're still talking, and the interface shows you the measured latency rather than
-asking you to take "realtime" on faith.
+Two people who do not share a language sit at one laptop. Each speaks naturally; the other
+hears it in their own language, in a natural voice, about half a second after they stop.
+Live captions stream in both languages while you are still talking, and the interface shows
+the **measured** latency of every turn rather than asking you to take "realtime" on faith.
 
-16 languages, including English, Hindi, Kannada, Tamil, Telugu, Marathi, Spanish, French,
-German, Italian, Portuguese, Japanese, Korean, Chinese, Russian and Arabic.
+**Deploys in one command.** `azd up` provisions everything, wires up managed identity,
+turns on Microsoft Entra sign-in, and gives you a URL.
+
+```
+English -> Hindi    "Good morning."  ->  सुप्रभात।    0.2s · 0.2s · 0.4s
+Hindi -> English    "नमस्ते."         ->  Hello.       0.2s · 0.2s · 0.5s
+                                           caption · translation · heard
+```
 
 ---
 
-## What makes this different from the samples
+## Important Security Notice
 
-**There is no API key anywhere.** Not in the source, not in `.env`, not in the browser. That
-isn't a stylistic preference — the Azure tenant this was built against force-applies
-`disableLocalAuth=true` to every Cognitive Services account, so a key cannot be obtained at all:
+**This accelerator contains no API keys, and cannot.** That is the central design decision,
+not a detail.
 
-```
-az cognitiveservices account keys list ...
-→ ERROR: (BadRequest) Failed to list key. disableLocalAuth is set to be true
-```
+The Azure AI Services account is provisioned with `disableLocalAuth: true`, so keys cannot be
+issued even by an administrator. The web app authenticates using a **user-assigned managed
+identity** holding the *Cognitive Services Speech User* role. There is no secret in the
+repository, in app settings, in deployment outputs, or in your `.env`.
 
-So authentication is Microsoft Entra ID end to end, and the browser is given a credential that is
-both narrow and short-lived:
+The browser never receives a durable credential either. It gets a **Speech-scoped token that
+expires in ten minutes**, minted server-side — never a Microsoft Entra access token, which
+would be accepted by every Cognitive Services resource the identity can reach.
 
-```
-Browser ──GET /api/speech-token──> Express broker ──DefaultAzureCredential──> Microsoft Entra ID
-                                          │
-                                          └──POST /sts/v1.0/issueToken──> Speech STS token (10 min)
+The deployed site sits behind **App Service built-in authentication (Microsoft Entra)**, and
+the application *additionally* refuses to mint a credential unless the platform supplies an
+authenticated principal. If authentication is misconfigured, the app **fails closed** — it
+stops working rather than publishing a credential-minting endpoint to the internet.
 
-Browser ══════ audio (WebSocket, direct) ══════> Azure AI Speech
-```
+**Before you use this beyond a demo,** read [`SECURITY.md`](SECURITY.md) for what it
+deliberately does *not* do — no rate limiting, no Content-Security-Policy, and public
+network access on the AI account — and [`docs/RESPONSIBLE_AI.md`](docs/RESPONSIBLE_AI.md)
+for where machine interpretation should never be used.
 
-The server never touches audio — that would add a hop to every frame. It only mints tokens.
-The browser never receives the Entra token, only the Speech-scoped one that expires in ten
-minutes. This is enforced mechanically: `src/client/**` is forbidden by the project charter from
-importing `@azure/identity`, and the gate fails the build if it ever does.
-
-Full reasoning in [`docs/adr/0002`](docs/adr/0002-entra-id-auth-no-keys.md) and
-[`docs/adr/0003`](docs/adr/0003-short-lived-sts-token-broker.md).
+This accelerator is a starting point, not a certified production system. You are responsible
+for reviewing it against your own security, privacy and compliance requirements.
 
 ---
 
-## Running it
+## Features
 
-### Prerequisites
+- **Bidirectional interpretation.** Speak in your language, they hear theirs; they speak,
+  you hear yours. 16 languages including English, Hindi, Kannada, Tamil, Telugu, Marathi,
+  Spanish, French, German, Italian, Portuguese, Japanese, Korean, Chinese, Russian, Arabic.
+- **Live captions in both languages**, streaming as you speak, with correct script direction
+  so Arabic renders right-to-left.
+- **Honest latency.** Every turn shows time-to-caption, time-to-translation and
+  time-until-heard. Typically `0.2s · 0.2s · 0.5s`.
+- **Keyless by construction.** Managed identity end to end; the browser holds only a
+  ten-minute Speech-scoped token.
+- **Cannot hear itself.** The microphone is muted at the device during playback, so the app
+  never translates its own synthesized voice in a loop.
+- **One-command deploy.** `azd up` provisions, configures identity and RBAC, creates the
+  Entra app registration, and enables sign-in.
+- **Verifiable.** 177 unit tests, an end-to-end check that drives real speech through a real
+  browser in both directions, a live catalogue check against Azure, and design tokens that
+  fail the build if they break WCAG contrast.
 
-- Node 20+
-- Azure CLI, logged in: `az login`
-- An Azure AI Services (or Speech) resource **with a custom subdomain**, SKU **S0**
+### Architecture
 
-> **S0 is required, not preferred.** The free F0 tier allows only one concurrent recognition, and
-> a bidirectional conversation needs two.
+```mermaid
+flowchart LR
+    subgraph Browser
+        UI[SpeechBridge SPA<br/>microphone + playback]
+    end
+    subgraph Azure
+        EA[App Service<br/>Easy Auth · Microsoft Entra]
+        APP[Express token broker<br/>user-assigned managed identity]
+        AI[Azure AI Services<br/>Speech · disableLocalAuth]
+        MON[Application Insights]
+    end
 
-### Provision (once)
-
-```powershell
-az group create -n rg-speech-bridge -l eastus2
-
-az cognitiveservices account create `
-  -n <unique-name> -g rg-speech-bridge -l eastus2 `
-  --kind AIServices --sku S0 --custom-domain <unique-name> --yes
-
-# Grant yourself the data-plane role (this is what replaces the API key)
-$rid = az cognitiveservices account show -n <unique-name> -g rg-speech-bridge --query id -o tsv
-az role assignment create --assignee <your-upn> `
-  --role "Cognitive Services Speech User" --scope $rid
+    UI -- "1. sign in" --> EA
+    EA --> APP
+    UI -- "2. GET /api/speech-token" --> APP
+    APP -- "3. managed identity" --> AI
+    AI -- "4. 10-minute Speech token" --> APP
+    APP -- "5. token only" --> UI
+    UI == "6. audio, WebSocket, direct" ==> AI
+    APP -.-> MON
 ```
 
-The `--custom-domain` flag is not optional: Microsoft Entra authentication does not work on
-regional endpoints. The server refuses to start if you point it at one.
+**The audio never touches our server.** Step 6 goes straight from the browser to Azure
+Speech; putting our backend in that path would add a hop to every audio frame and defeat the
+latency goal. The server exists only to mint credentials.
 
-### Configure and run
+### Costs
 
-```powershell
+Verified against the Azure Retail Prices API for `eastus2` on 2026-08-10. Prices vary by
+region and change over time — confirm with the
+[Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/).
+
+| Resource | Driver | Indicative cost |
+|---|---|---|
+| App Service Plan **B1 Linux** | Always on | **$0.02/hour** (~$15/month) |
+| Azure AI Services **S0** | Per hour of audio processed | See [Speech pricing](https://azure.microsoft.com/pricing/details/cognitive-services/speech-services/) — billed only while speaking |
+| Log Analytics | Data ingested | **$2.76/GB** (first 5 GB/month typically free) |
+| Application Insights | Included in Log Analytics ingestion | — |
+
+The dominant fixed cost is the App Service plan. **Run `azd down` when you are finished** —
+a demo left running costs about $15/month doing nothing.
+
+> **S0 is required, not preferred.** The free tier permits one concurrent recognition and
+> caps text-to-speech at 20 transactions per 60 seconds; a floor change briefly overlaps two
+> recognizers.
+
+---
+
+## Getting Started
+
+### Deploy to Azure (one command)
+
+You need an Azure subscription, the [Azure Developer CLI](https://aka.ms/azd), and the
+[Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli). Or click the
+Codespaces badge above and get all of it preinstalled.
+
+```bash
+azd auth login
+azd up
+```
+
+`azd up` asks for an environment name and region, then provisions the AI Services account
+with a custom subdomain, a managed identity with the Speech User role, the App Service plan
+and site, and Log Analytics — then deploys the app, creates the Microsoft Entra app
+registration and switches on sign-in. It prints your URL when it finishes.
+
+**Regions:** choose one that supports Azure AI Speech. The template restricts the parameter
+to a validated list; `eastus2`, `westus3`, `swedencentral` and `centralindia` are all good
+choices.
+
+**If your account cannot create app registrations** — common in locked-down tenants — the
+deployment still succeeds and tells you exactly what to do:
+
+```bash
+# after an administrator creates an app registration with the printed redirect URI
+azd env set AUTH_CLIENT_ID <application-client-id>
+azd provision
+```
+
+Until then the site is deployed but refuses to work, by design.
+
+To remove everything:
+
+```bash
+azd down --purge
+```
+
+### Run it locally
+
+```bash
 npm install
-Copy-Item .env.example .env    # then edit it — no key required, only identifiers
-
-npm run dev                    # token broker + Vite dev server
+cp .env.example .env      # no API key required
+az login
+npm run dev
 ```
 
-Open <http://localhost:5173>. Pick a language for each side, click **Hold the floor** (or press
-`1` / `2`), and talk. Press `Esc` to release.
+Open <http://localhost:5173>. Hold the floor with **`1`** or **`2`**, talk, press **`Esc`**
+to release.
 
-### Use a headset
+Locally the server binds to **loopback only** and validates the `Host` header, because the
+credential endpoint has no user authentication there. That is deliberate — see
+[ADR-0003](docs/adr/0003-short-lived-sts-token-broker.md).
 
-The app speaks its translation through the same machine that's listening. It mutes the microphone
-during playback so it can't hear itself and loop, but on open speakers in a live room a headset is
-still the better experience. ([ADR-0006](docs/adr/0006-mic-gating-for-echo-control.md).)
+> **Use a headset if you can.** The microphone is muted during playback so the app cannot
+> hear itself, but a headset is cleaner in a live room.
+>
+> **Pause between sentences.** End-of-utterance is detected after 350 ms of silence, so a
+> pause commits the phrase and starts translating. That is the deliberate trade for speed.
+
+### Verify it
+
+```bash
+npm test                  # unit tests
+npm run verify:e2e        # real speech through a real browser, both directions
+npm run verify:voices     # catalogue still matches the live service
+npm run bench:synthesis   # re-measure the synthesis latency question
+node .ironclad/gate.mjs --stage packet     # the definition of done
+```
 
 ---
 
-## How it works
+## Guidance
 
-| File | Responsibility |
+### How it works
+
+| Path | Responsibility |
 |---|---|
-| `src/shared/languages.ts` | The 16 languages, their recognition locales and their voices |
+| `infra/` | Bicep: AI Services, managed identity, RBAC, App Service, monitoring |
+| `src/shared/languages.ts` | The 16 languages, recognition locales and verified voices |
 | `src/server/tokenBroker.ts` | Entra → Speech STS exchange, cached, refreshed at 80% of life |
-| `src/server/app.ts` | `/api/speech-token`, `/api/languages`, `/api/health` |
-| `src/client/conversation.ts` | Who holds the floor, what's believed, what's transcribed |
-| `src/client/micGate.ts` | Mutes recognition during playback so the app can't hear itself |
-| `src/client/latency.ts` | Per-turn timing: caption → translation → heard |
+| `src/server/localGuard.ts` | Who may mint a credential: loopback locally, Entra principal when deployed |
+| `src/client/conversation.ts` | Who holds the floor, what is believed, what is transcribed |
+| `src/client/micGate.ts` | Mutes the microphone during playback so the app cannot hear itself |
 | `src/client/azureSpeech.ts` | The only file that knows the Speech SDK exists |
-| `src/client/view.ts` | Pure presentation logic |
 
-The Speech SDK sits behind two seams (`TranslationChannel`, `SpeechPlayer`), so all the rules that
-matter are unit-tested without a network, a microphone or a browser.
+The Speech SDK sits behind two seams, so every rule that matters is unit-tested without a
+network, a microphone or a browser.
 
----
+### Latency, and how it got here
 
-## Commands
+Time-to-heard started at **1.2–2.4 s** and is now **0.4–0.7 s**. The fix was not the obvious
+one. Benchmarking (`npm run bench:synthesis`, 5 trials each) showed:
 
-```powershell
-npm test              # unit tests
-npm run coverage      # coverage, floor enforced at 80%
-npm run lint
-npm run typecheck
-npm run build
-
-npm run verify:voices    # re-check every voice + language code against live Azure
-npm run fixture:speech   # synthesize the spoken WAV used by the e2e check
-npm run verify:e2e       # play it into a real browser, assert Hindi comes out
-npm run verify:browser   # page loads, keyboard works, no console errors
-
-node .ironclad/gate.mjs --stage packet   # the definition of done
-```
-
-`verify:voices` matters more than it looks: voices are added and retired by Azure, and a catalog
-that was correct at commit time can quietly stop being true. It hits the live service and fails if
-anything we claim to support no longer exists.
-
-`verify:e2e` is the one that proves the product claim. It feeds recorded speech into Chromium's
-microphone, drives the real UI, and checks **both directions** — because proving one direction
-proves half a product:
-
-```
-A speaks English -> B hears Hindi
-  heard      : Good morning.
-  translated : सुप्रभात।  [lang=hi]
-  latency    : 0.2s · 0.4s · 1.2s
-
-B speaks Hindi   -> A hears English
-  heard      : नमस्ते।
-  translated : Hello.  [lang=en]
-  latency    : 0.3s · 0.5s · 1.3s
-```
-
----
-
-## Latency, honestly
-
-Measured end to end **in Chromium against live Azure**, English→Hindi, by playing a recorded
-utterance into the browser's microphone (`npm run verify:e2e`):
-
-| Milestone | Time |
+| Strategy | Median to first audio |
 |---|---|
-| First caption on screen | **0.2 s** |
-| Translation settled | **0.2 – 0.5 s** |
-| Listener actually hears it | **0.4 – 0.7 s** |
+| Chained synthesizer (cold) | 2775 ms |
+| **Chained + pre-opened connection** | **2218 ms** |
+| Fused (recognizer's own synthesis) | 2032 ms |
 
-Those numbers are the result of chasing the third row down. It originally read **1.2–2.4 s**,
-because speech synthesis was paying for a cold TLS + WebSocket handshake at the worst possible
-moment — right after the speaker stopped talking.
+Most of the cost was a **cold TLS and WebSocket handshake** at the worst possible moment,
+right after the speaker stopped. Opening the connection *while the user is still speaking* —
+when the wait is free — recovered 75% of the available win without the architectural
+rewrite that fused synthesis would have required.
+Reasoning: [ADR-0009](docs/adr/0009-prewarm-synthesis-connection.md).
 
-`scripts/bench-synthesis.mjs` measured three strategies against live Azure. Switching to the
-recognizer's built-in fused synthesis would have saved 743 ms but required rebuilding playback,
-barge-in and the microphone gate around a streaming source. Simply **opening the synthesis
-connection early — while the user is still speaking, when the wait is free — recovered 75% of
-that** for a few lines of code. The synthesis leg fell from ~800–2000 ms to about 200 ms.
-Full reasoning in [ADR-0009](docs/adr/0009-prewarm-synthesis-connection.md).
-
-The other tunable is end-of-utterance detection: the recognizer waits for a pause before
-committing, set to 350 ms via `Speech_SegmentationSilenceTimeoutMs` (documented range
-100–5000, default 500). That is why the fixture's opening sentence commits on its own — a
-short pause ends the phrase. It is the deliberate trade for a snappier turnaround.
-
-The interface shows all three timings on every turn, so you see the real numbers rather than
-trusting this table.
-
----
-
-## Engineering
-
-Built under [Ironclad](docs/adr/0001-adopt-ironclad.md): test-first, one packet per commit, a
-five-seat review council, and a machine-checked definition of done. Notable consequences:
-
-- Design tokens are **contrast-tested** — a colour that fails WCAG fails the build
-  (`tests/designTokens.test.ts`).
-- Module boundaries are enforced, not merely intended.
-- Every architectural claim in `docs/` is traced to a measurement or a citation.
-  What we didn't know, and how each was closed, is in [`docs/UNKNOWNS.md`](docs/UNKNOWNS.md).
-
-### Two landmines documented so you don't lose an afternoon
+### Two landmines documented so you do not lose an afternoon
 
 1. **Node's native `WebSocket` breaks the Speech SDK.** Recognition dies with an unexplained
-   `1006` because Node negotiates WebSocket-over-HTTP/2, which the service rejects. Browsers are
-   unaffected. ([ADR-0004](docs/adr/0004-node-native-websocket-breaks-speech-sdk.md).)
-2. **`TranslationRecognizer` has no echo cancellation**, so a demo on open speakers will
-   translate its own output in a loop unless you gate the microphone.
-   ([ADR-0006](docs/adr/0006-mic-gating-for-echo-control.md).)
+   `1006` because Node negotiates WebSocket-over-HTTP/2, which the service rejects. Browsers
+   are unaffected. ([ADR-0004](docs/adr/0004-node-native-websocket-breaks-speech-sdk.md))
+2. **`TranslationRecognizer` has no echo cancellation.** On open speakers it will translate
+   its own output in a loop unless you mute the capture device — and filtering *results* is
+   not enough, because audio captured during playback can finalise afterwards.
+   ([ADR-0008](docs/adr/0008-gate-the-microphone-track.md))
+
+### Known limitations
+
+- **Two parties, one at a time.** One microphone means one recognizer; the floor is explicit.
+- **No barge-in.** You cannot interrupt a translation mid-playback — the microphone is muted.
+  Real barge-in needs an engine with full-duplex echo cancellation (Voice Live).
+- **A held floor is bounded by the token lifetime** (~10 minutes) until roadmap item P-8.
+- **Nothing is stored.** No audio, no transcripts, no accounts.
+
+### Engineering
+
+Built under an executable engineering contract: test-first, one packet per commit, a
+five-seat review council, and a machine-checked definition of done
+(`node .ironclad/gate.mjs --stage packet`). Design tokens are contrast-tested, so a colour
+that fails WCAG fails the build. What we did not know, and how each was closed, is in
+[`docs/UNKNOWNS.md`](docs/UNKNOWNS.md). See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ---
 
-## Limits
+## Resources
 
-This is a demo, and says so:
+- [Azure AI Speech — speech translation](https://learn.microsoft.com/azure/ai-services/speech-service/speech-translation)
+- [Authenticate with Microsoft Entra ID](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-configure-azure-ad-auth)
+- [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/)
+- [App Service built-in authentication](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)
+- [Transparency note for Azure AI Speech](https://learn.microsoft.com/legal/cognitive-services/speech-service/speech-to-text/transparency-note)
+- [Speech SDK for JavaScript](https://learn.microsoft.com/javascript/api/microsoft-cognitiveservices-speech-sdk/)
+- Project decisions: [`docs/adr/`](docs/adr) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
-- **Two parties, one at a time.** One microphone means one recognizer; the floor is explicit.
-- **No barge-in.** You can't interrupt a translation mid-playback — the microphone is muted then.
-  Fixing that properly means a different engine (Voice Live has built-in AEC), which is on the roadmap.
-- **Nothing is stored.** No audio, no transcripts, no accounts.
-- Not hardened for public deployment: no CORS policy, rate limiting or authentication on the
-  broker. It's built to run on localhost.
+## Trademarks
+
+This project may contain trademarks or logos for projects, products, or services. Authorized
+use of Microsoft trademarks or logos is subject to and must follow
+[Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general).
+Use of third-party trademarks or logos is subject to those third parties' policies.

@@ -13,6 +13,7 @@ describe("server configuration", () => {
       region: "eastus2",
       port: 9000,
       host: "127.0.0.1",
+      accessMode: "local",
     });
   });
 
@@ -89,6 +90,38 @@ describe("server configuration", () => {
       SPEECH_REGION: "eastus2",
     });
     expect(config.host).toBe("127.0.0.1");
+    expect(config.accessMode).toBe("local");
+  });
+
+  it("switches to authenticated mode when told to", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      ACCESS_MODE: "authenticated",
+    });
+    expect(config.accessMode).toBe("authenticated");
+  });
+
+  it("binds all interfaces automatically when running in App Service", () => {
+    // App Service terminates TLS and forwards to the container, so loopback-only would
+    // make the site unreachable. WEBSITE_SITE_NAME is only set by the platform.
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      WEBSITE_SITE_NAME: "app-speechbridge",
+    });
+    expect(config.host).toBe("0.0.0.0");
+    expect(config.accessMode).toBe("authenticated");
+  });
+
+  it("refuses an unrecognised access mode rather than failing open", () => {
+    expect(() =>
+      loadConfig({
+        SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+        SPEECH_REGION: "eastus2",
+        ACCESS_MODE: "everyone",
+      }),
+    ).toThrowError(/ACCESS_MODE/);
   });
 
   it("allows a wider bind only when explicitly asked for", () => {

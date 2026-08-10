@@ -1,24 +1,27 @@
 import express, { type Express, type Request, type Response } from "express";
 import { LANGUAGES } from "../shared/languages.js";
-import { isLocalRequest } from "./localGuard.js";
+import { isAuthorizedRequest, type AccessMode } from "./localGuard.js";
 import type { TokenBroker } from "./tokenBroker.js";
 
 export interface AppOptions {
   readonly broker: TokenBroker;
   /** Directory of built client assets. Omitted in tests and in dev, where Vite serves the client. */
   readonly clientDir?: string;
-  /** Port the server is reachable on, used to validate the Host header. */
+  /** Port the server is reachable on, used to validate the Host header in local mode. */
   readonly port?: number;
   /** Extra origins allowed to call the API — the Vite dev server in development. */
   readonly allowedOrigins?: readonly string[];
+  /** How callers are authorised. Defaults to `local`. */
+  readonly accessMode?: AccessMode;
 }
 
 export function createApp(options: AppOptions): Express {
   const app = express();
   app.disable("x-powered-by");
+  const accessMode: AccessMode = options.accessMode ?? "local";
 
   app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok" });
+    res.json({ status: "ok", accessMode });
   });
 
   app.get("/api/languages", (_req: Request, res: Response) => {
@@ -26,18 +29,19 @@ export function createApp(options: AppOptions): Express {
   });
 
   app.get("/api/speech-token", async (req: Request, res: Response) => {
-    // Loopback binding alone does not stop DNS rebinding: a hostname the attacker controls
-    // can resolve to 127.0.0.1, making their page same-origin with us. Checking the Host
-    // header closes that, because the browser sends their hostname rather than ours.
+    // Locally: loopback binding plus a Host check, because DNS rebinding can make an
+    // attacker's page same-origin with us. Deployed: an Entra identity from Easy Auth.
     if (options.port !== undefined) {
-      const allowed = isLocalRequest({
+      const verdict = isAuthorizedRequest({
+        mode: accessMode,
         host: req.headers.host,
         origin: req.headers.origin,
+        principalId: req.headers["x-ms-client-principal-id"] as string | undefined,
         port: options.port,
         ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
       });
-      if (!allowed) {
-        res.status(403).json({ error: "This endpoint is only available to this machine." });
+      if (!verdict.allowed) {
+        res.status(403).json({ error: verdict.reason });
         return;
       }
     }

@@ -1,0 +1,35 @@
+{
+  "name": "SpeechBridge",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/azure-cli:1": {
+      "version": "latest"
+    },
+    "ghcr.io/azure/azure-dev/azd:0": {
+      "version": "latest"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.azure-dev",
+        "ms-azuretools.vscode-bicep",
+        "dbaeumer.vscode-eslint",
+        "vitest.explorer"
+      ],
+      "settings": {
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "npm install",
+  "forwardPorts": [5173, 8790],
+  "portsAttributes": {
+    "5173": { "label": "SpeechBridge (dev)", "onAutoForward": "openBrowser" },
+    "8790": { "label": "Token broker" }
+  },
+  "remoteUser": "node",
+  "hostRequirements": {
+    "memory": "4gb"
+  }
+}

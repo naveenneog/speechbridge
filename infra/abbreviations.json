@@ -1,0 +1,9 @@
+{
+  "resourcesResourceGroups": "rg-",
+  "cognitiveServicesAccounts": "aisvc",
+  "insightsComponents": "appi-",
+  "managedIdentityUserAssignedIdentities": "id-",
+  "operationalInsightsWorkspaces": "log-",
+  "webServerFarms": "plan-",
+  "webSitesAppService": "app-"
+}

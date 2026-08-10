@@ -1,0 +1,37 @@
+// Log Analytics + Application Insights.
+//
+// An accelerator that cannot be diagnosed after deployment is a demo, not a solution.
+// The app writes its token-exchange failures to stdout, which App Service forwards here.
+
+param logAnalyticsName string
+param applicationInsightsName string
+param location string
+param tags object = {}
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: logAnalyticsName
+  location: location
+  tags: tags
+  properties: {
+    retentionInDays: 30
+    sku: {
+      name: 'PerGB2018'
+    }
+  }
+}
+
+resource applicationInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: applicationInsightsName
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+  }
+}
+
+output logAnalyticsWorkspaceId string = logAnalytics.id
+output applicationInsightsName string = applicationInsights.name
+output applicationInsightsConnectionString string = applicationInsights.properties.ConnectionString
+

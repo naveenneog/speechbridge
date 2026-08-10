@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: speechbridge
+metadata:
+  template: speechbridge@1.0.0
+
+services:
+  web:
+    project: .
+    language: js
+    host: appservice
+    dist: .
+
+hooks:
+  # Creates the Microsoft Entra app registration and turns on Easy Auth, so `azd up`
+  # protects the site without anyone visiting the portal. Without this the credential
+  # endpoint would be published to the internet unauthenticated.
+  postprovision:
+    posix:
+      shell: sh
+      run: ./scripts/postprovision.sh
+      interactive: false
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: ./scripts/postprovision.ps1
+      interactive: false
+      continueOnError: false
