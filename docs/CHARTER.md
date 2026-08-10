@@ -32,7 +32,7 @@ language, in a natural voice, within roughly a second and a half.
 | Therefore **Microsoft Entra ID is the only auth path**, and Entra auth on Speech **requires a custom subdomain** on the resource. | ADR-0002 |
 | The browser must never hold an Entra token (broad scope). A backend exchanges it for a **short-lived Speech STS token**. | ADR-0003 |
 | **Node's native `WebSocket` (Node 22+/26) breaks the Speech SDK.** Recognition fails with a 1006 connection error unless the `ws` fallback is used. Browsers are unaffected. | ADR-0004 |
-| **F0 (free) tier allows 1 concurrent recognition.** A bidirectional demo needs 2 → **S0 required**. | `speech-services-quotas-and-limits` |
+| **F0 (free) tier is unsuitable.** It caps text-to-speech at 20 transactions per 60 seconds and permits one concurrent recognition; a floor change briefly overlaps the outgoing and incoming recognizers. **S0 required.** | `speech-services-quotas-and-limits` |
 | Speech translation bills 2 target languages; more incur Translator character costs. | `speech-translation` docs |
 
 ## Quality bar

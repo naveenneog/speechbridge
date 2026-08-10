@@ -18,21 +18,29 @@
 - [x] P-4  Latency metering: measurable, displayable timings per utterance
       Given an utterance, when first partial / final / audio-start occur, then each is
       recorded as a millisecond offset from speech start.
-- [ ] P-5  Translation session: recognizer lifecycle, partials, finals, spoken output  ← ACTIVE
-      Given a speaker turn, when audio is spoken, then partial captions stream, a final
-      translation is produced, and the translated audio plays in the listener's language.
-      Unknowns: U-5, U-6, U-7, U-8.
-- [ ] P-6  The interface: two-channel conversation console
-      Given a running session, when either party speaks, then the UI shows who holds the
-      floor, live captions in both languages, and the measured latency.
-      Unknowns: U-11.
-- [ ] P-7  End-to-end verification against live Azure + README
+- [x] P-5  Translation session: recognizer lifecycle, partials, finals, spoken output
+- [x] P-6  The interface: two-channel conversation console
+- [x] P-7  Council review, security hardening, README  ← the council found four real defects
+      (lifecycle race, never-settling playback promise, per-utterance latency, LAN exposure);
+      all fixed with regression tests. See ADR-0008.
 
-## Next — M2: Fit and finish
+## Next — M2: What the council raised and we did not do yet
 
-- [ ] P-8  Conversation transcript export (copy / download)
-- [ ] P-9  Device picker (choose mic and output device)
-- [ ] P-10 Reconnect and token-expiry recovery under a dropped network
+- [ ] P-8  Push a refreshed token onto a running recognizer (U-13)
+      Today a single held floor is bounded by the ~10-minute token life. Given a floor held
+      past expiry, when the token refreshes, then recognition continues uninterrupted.
+- [ ] P-9  Benchmark fused synthesis against the chained synthesizer
+      ADR-0005 chose an explicitly chained `SpeechSynthesizer`. The SDK does support
+      `SpeechTranslationConfig.voiceName` with a `synthesizing` event for a single target,
+      so the extra round trip should be measured, not assumed. The latency meter is the
+      instrument; if fused wins, supersede ADR-0005.
+- [ ] P-10 Separate input, output and connection state from the echo-suppression gate
+      `conversation.ts` currently derives its whole user-visible phase from `micGate`, which
+      cannot represent an engine that listens and speaks at once.
+- [ ] P-11 Content-Security-Policy and `Permissions-Policy` on the served client
+- [ ] P-12 Conversation transcript export (copy / download)
+- [ ] P-13 Device picker (choose microphone and output device)
+- [ ] P-14 Surface an empty translation result instead of dropping it silently
 
 ## Later (ideas, not commitments)
 

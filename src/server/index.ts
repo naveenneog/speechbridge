@@ -32,13 +32,25 @@ const broker = createTokenBroker({
 });
 
 const clientDir = resolve(here, "../../dist/client");
-const app = createApp(existsSync(clientDir) ? { broker, clientDir } : { broker });
+const app = createApp({
+  broker,
+  port: config.port,
+  // Vite serves the client on its own origin in development.
+  allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  ...(existsSync(clientDir) ? { clientDir } : {}),
+});
 
-const server = app.listen(config.port, () => {
-  console.log(`SpeechBridge token broker listening on http://localhost:${config.port}`);
+const server = app.listen(config.port, config.host, () => {
+  console.log(`SpeechBridge token broker listening on http://${config.host}:${config.port}`);
   console.log(`  resource : ${config.endpoint}`);
   console.log(`  region   : ${config.region}`);
   console.log(`  auth     : Microsoft Entra ID (no keys — see docs/adr/0002)`);
+  if (config.host !== "127.0.0.1") {
+    console.warn(
+      `  WARNING  : bound to ${config.host}, so anything that can reach this port can mint ` +
+        `Speech tokens against your subscription. Unset HOST to return to loopback only.`,
+    );
+  }
 });
 
 // Without this, a port clash exits silently and the only symptom is a confusing 404

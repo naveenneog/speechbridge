@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>SpeechBridge — live interpreted conversation</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="masthead">
+        <div>
+          <h1>SpeechBridge</h1>
+          <p>
+            Speak in your language; the other person hears it in theirs. Hold the floor while
+            you talk, then hand it over.
+          </p>
+        </div>
+        <div class="status" id="status" data-state="connecting" role="status">
+          <span class="status__dot" aria-hidden="true"></span>
+          <span id="status-text">Connecting…</span>
+        </div>
+      </header>
+
+      <div class="notice" id="notice" role="alert" hidden>
+        <div>
+          <span class="notice__title" id="notice-title">Something went wrong</span>
+          <p id="notice-body"></p>
+        </div>
+      </div>
+
+      <main class="channels">
+        <section class="channel" id="channel-a" data-live="false" aria-labelledby="who-a">
+          <div class="channel__head">
+            <span class="channel__who" id="who-a">You</span>
+            <span class="channel__badge" id="badge-a" hidden>Speaking</span>
+          </div>
+
+          <div class="field">
+            <label for="lang-a">Your language</label>
+            <select id="lang-a"></select>
+          </div>
+
+          <div class="caption">
+            <p class="caption__text" id="caption-a" aria-live="polite" aria-atomic="true"></p>
+            <p class="caption__hint" id="hint-a">Your words appear here as you speak.</p>
+          </div>
+
+          <div class="floor">
+            <button
+              type="button"
+              class="btn btn--primary floor__grow"
+              id="floor-a"
+              aria-pressed="false"
+            >
+              <span id="floor-a-label">Hold the floor</span>
+              <kbd class="btn__key">1</kbd>
+            </button>
+          </div>
+        </section>
+
+        <section class="channel" id="channel-b" data-live="false" aria-labelledby="who-b">
+          <div class="channel__head">
+            <span class="channel__who" id="who-b">Them</span>
+            <span class="channel__badge" id="badge-b" hidden>Speaking</span>
+          </div>
+
+          <div class="field">
+            <label for="lang-b">Their language</label>
+            <select id="lang-b"></select>
+          </div>
+
+          <div class="caption">
+            <p class="caption__text" id="caption-b" aria-live="polite" aria-atomic="true"></p>
+            <p class="caption__hint" id="hint-b">The translation appears here and is spoken aloud.</p>
+          </div>
+
+          <div class="floor">
+            <button
+              type="button"
+              class="btn btn--primary floor__grow"
+              id="floor-b"
+              aria-pressed="false"
+            >
+              <span id="floor-b-label">Hold the floor</span>
+              <kbd class="btn__key">2</kbd>
+            </button>
+          </div>
+        </section>
+      </main>
+
+      <section class="transcript" aria-labelledby="transcript-heading">
+        <div class="transcript__head">
+          <h2 id="transcript-heading">Conversation</h2>
+          <button type="button" class="btn" id="release" disabled>
+            Release the floor
+            <kbd class="btn__key">Esc</kbd>
+          </button>
+        </div>
+        <p class="empty" id="transcript-empty">
+          Nothing said yet. Choose both languages, hold the floor, and start talking.
+        </p>
+        <ul class="transcript__list" id="transcript" aria-live="polite"></ul>
+      </section>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

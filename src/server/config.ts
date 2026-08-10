@@ -10,9 +10,20 @@ export interface ServerConfig {
   readonly endpoint: string;
   readonly region: string;
   readonly port: number;
+  /** Interface to bind. Loopback by default — see the comment in `loadConfig`. */
+  readonly host: string;
 }
 
 const DEFAULT_PORT = 8790;
+
+/**
+ * Loopback, deliberately. `/api/speech-token` mints an Azure credential and has no user
+ * authentication, so binding the wildcard address would let anyone on the same network
+ * mint Speech tokens against this subscription. Widening it must be a conscious act.
+ */
+const DEFAULT_HOST = "127.0.0.1";
+
+const ALLOWED_ENDPOINT_SUFFIX = ".cognitiveservices.azure.com";
 
 function required(env: Record<string, string | undefined>, name: string): string {
   const value = env[name]?.trim();
@@ -24,10 +35,7 @@ function required(env: Record<string, string | undefined>, name: string): string
   return value;
 }
 
-export function loadConfig(env: Record<string, string | undefined>): ServerConfig {
-  const endpoint = required(env, "SPEECH_ENDPOINT").replace(/\/+$/, "");
-  const region = required(env, "SPEECH_REGION");
-
+function validateEndpoint(endpoint: string): string {
   if (/\.api\.cognitive\.microsoft\.com/i.test(endpoint)) {
     throw new Error(
       `SPEECH_ENDPOINT must be the resource's custom subdomain ` +
@@ -35,6 +43,33 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
         `Microsoft Entra authentication is not supported on regional endpoints — see docs/adr/0002.`,
     );
   }
+
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    throw new Error(`SPEECH_ENDPOINT is not a valid URL: "${endpoint}".`);
+  }
+
+  // The Entra token is POSTed to this host. Sending it anywhere unexpected, or in
+  // cleartext, would defeat the entire point of ADR-0003.
+  if (url.protocol !== "https:") {
+    throw new Error(`SPEECH_ENDPOINT must use https, got "${url.protocol}".`);
+  }
+  if (!url.hostname.toLowerCase().endsWith(ALLOWED_ENDPOINT_SUFFIX)) {
+    throw new Error(
+      `SPEECH_ENDPOINT must be an Azure host ending in ${ALLOWED_ENDPOINT_SUFFIX}, ` +
+        `got "${url.hostname}".`,
+    );
+  }
+
+  return endpoint;
+}
+
+export function loadConfig(env: Record<string, string | undefined>): ServerConfig {
+  const endpoint = validateEndpoint(required(env, "SPEECH_ENDPOINT").replace(/\/+$/, ""));
+  const region = required(env, "SPEECH_REGION");
+  const host = env["HOST"]?.trim() || DEFAULT_HOST;
 
   const rawPort = env["PORT"]?.trim();
   let port = DEFAULT_PORT;
@@ -45,5 +80,5 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
     }
   }
 
-  return { endpoint, region, port };
+  return { endpoint, region, port, host };
 }

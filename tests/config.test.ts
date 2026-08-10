@@ -12,6 +12,7 @@ describe("server configuration", () => {
       endpoint: "https://x.cognitiveservices.azure.com",
       region: "eastus2",
       port: 9000,
+      host: "127.0.0.1",
     });
   });
 
@@ -45,6 +46,58 @@ describe("server configuration", () => {
         SPEECH_REGION: "eastus2",
       }),
     ).toThrowError(/custom subdomain/i);
+  });
+
+  it("refuses to send the Entra token over plain http", () => {
+    // The Entra token is the broad credential this whole design exists to protect;
+    // a single-character config slip must not put it on the wire in cleartext.
+    expect(() =>
+      loadConfig({
+        SPEECH_ENDPOINT: "http://x.cognitiveservices.azure.com",
+        SPEECH_REGION: "eastus2",
+      }),
+    ).toThrowError(/https/i);
+  });
+
+  it("refuses an endpoint that is not an Azure Cognitive Services host", () => {
+    expect(() =>
+      loadConfig({
+        SPEECH_ENDPOINT: "https://attacker.example",
+        SPEECH_REGION: "eastus2",
+      }),
+    ).toThrowError(/cognitiveservices\.azure\.com/i);
+  });
+
+  it("refuses a hostname that merely contains the Azure suffix", () => {
+    expect(() =>
+      loadConfig({
+        SPEECH_ENDPOINT: "https://cognitiveservices.azure.com.attacker.example",
+        SPEECH_REGION: "eastus2",
+      }),
+    ).toThrowError(/cognitiveservices\.azure\.com/i);
+  });
+
+  it("refuses an unparseable endpoint", () => {
+    expect(() =>
+      loadConfig({ SPEECH_ENDPOINT: "not a url", SPEECH_REGION: "eastus2" }),
+    ).toThrowError(/SPEECH_ENDPOINT/);
+  });
+
+  it("binds to loopback by default so the LAN cannot mint tokens", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+    });
+    expect(config.host).toBe("127.0.0.1");
+  });
+
+  it("allows a wider bind only when explicitly asked for", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      HOST: "0.0.0.0",
+    });
+    expect(config.host).toBe("0.0.0.0");
   });
 
   it("rejects a non-numeric port rather than silently listening on NaN", () => {

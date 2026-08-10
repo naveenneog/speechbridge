@@ -31,7 +31,7 @@
     "@types/express": "5.0.5",
     "@types/node": "24.10.1",
     "@vitest/coverage-v8": "4.1.10",
-    "concurrently": "9.2.1",
+    "concurrently": "^9.2.4",
     "eslint": "9.39.5",
     "tsx": "4.23.5",
     "typescript": "5.9.3",
@@ -40,4 +40,3 @@
     "vitest": "4.1.10"
   }
 }
-

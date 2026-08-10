@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { AddressInfo } from "node:net";
 import type { Server } from "node:http";
+import { request } from "node:http";
 import { createApp } from "../src/server/app.js";
 import type { TokenBroker } from "../src/server/tokenBroker.js";
 
@@ -12,17 +13,84 @@ function stubBroker(overrides: Partial<TokenBroker> = {}): TokenBroker {
 }
 
 /** Starts the app on an ephemeral port and returns a fetch bound to it. */
-async function serve(broker: TokenBroker) {
-  const app = createApp({ broker });
+async function serve(broker: TokenBroker, options: { port?: number } = {}) {
   const server: Server = await new Promise((resolve) => {
-    const s = app.listen(0, () => resolve(s));
+    const app = createApp({ broker, ...(options.port !== undefined ? { port: options.port } : {}) });
+    const s = app.listen(0, "127.0.0.1", () => resolve(s));
   });
   const { port } = server.address() as AddressInfo;
   return {
+    port,
     url: (path: string) => `http://127.0.0.1:${port}${path}`,
     close: () => new Promise<void>((resolve) => server.close(() => resolve())),
   };
 }
+
+/** Sends a raw request so the Host header can be forged, which fetch() forbids. */
+function rawGet(port: number, path: string, headers: Record<string, string>): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: "127.0.0.1", port, path, method: "GET", headers },
+      (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/** Starts the app on an explicit port so the Host header can be matched exactly. */
+async function serveOnPort(port: number) {
+  const app = createApp({ broker: stubBroker(), port });
+  const server: Server = await new Promise((resolve) => {
+    const s = app.listen(port, "127.0.0.1", () => resolve(s));
+  });
+  return {
+    port,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
+describe("token endpoint origin guard", () => {
+  it("refuses a request whose Host header is a hostname we do not own", async () => {
+    // DNS rebinding: attacker.example resolves to 127.0.0.1, so without this check the
+    // attacker's page would be same-origin with us and could read the minted token.
+    const s = await serveOnPort(9911);
+    try {
+      const status = await rawGet(s.port, "/api/speech-token", {
+        Host: `attacker.example:${s.port}`,
+      });
+      expect(status).toBe(403);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("serves a genuine loopback request", async () => {
+    const s = await serveOnPort(9912);
+    try {
+      const status = await rawGet(s.port, "/api/speech-token", { Host: `127.0.0.1:${s.port}` });
+      expect(status).toBe(200);
+    } finally {
+      await s.close();
+    }
+  });
+
+  it("refuses a cross-site Origin even from loopback", async () => {
+    const s = await serveOnPort(9913);
+    try {
+      const status = await rawGet(s.port, "/api/speech-token", {
+        Host: `127.0.0.1:${s.port}`,
+        Origin: "https://evil.example",
+      });
+      expect(status).toBe(403);
+    } finally {
+      await s.close();
+    }
+  });
+});
 
 describe("token endpoint", () => {
   it("returns the token, region and expiry as JSON", async () => {

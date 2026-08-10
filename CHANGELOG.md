@@ -29,3 +29,30 @@ Format: [Keep a Changelog](https://keepachangelog.com).
   it is in, so it never looks like it has silently stopped listening. (P-3)
 - Per-turn latency measurement — time to first caption, time to the settled translation,
   and time until the other person hears it. (P-4)
+- The conversation itself: hold the floor, speak, and the other person hears you in their
+  language. Live captions in both languages while you talk, an interleaved transcript, and
+  the measured latency of every turn. Keyboard throughout — `1`, `2` and `Esc`. (P-5, P-6)
+- 16 languages selectable per side, each caption rendered with its own script direction so
+  Arabic reads correctly. (P-6)
+
+### Fixed (from the review council)
+- The microphone is now muted at the device during playback, not merely ignored. Audio
+  captured while the translation played could previously arrive late and be treated as a
+  new sentence — the feedback loop the mute was supposed to prevent. (ADR-0008)
+- Latency is measured per sentence and from when speech actually starts. Previously every
+  line after the first repeated the first line's numbers, and the "heard" figure was
+  recorded before any sound had been produced.
+- Releasing the floor while the app was still connecting no longer leaves an invisible
+  microphone recording in the background.
+- A blocked or interrupted translation no longer freezes the app in "speaking" forever.
+- If the microphone fails to open, the app says so and lets you try again, instead of
+  claiming you hold the floor over a dead microphone.
+
+### Security
+- The token endpoint now listens on loopback only. It previously bound every network
+  interface, so anyone on the same network could mint Azure Speech tokens against this
+  subscription — while the console said "localhost".
+- Requests are rejected unless they genuinely come from this machine, closing a DNS
+  rebinding path to the credential.
+- A mistyped `SPEECH_ENDPOINT` can no longer send the Entra token somewhere unintended:
+  only `https://…cognitiveservices.azure.com` is accepted.
