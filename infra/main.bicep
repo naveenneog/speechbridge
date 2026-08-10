@@ -35,14 +35,10 @@ param location string
 @description('Object ID of the user running the deployment. Granted Speech User so the app can also be run locally against this resource. Leave empty to skip.')
 param principalId string = ''
 
-@description('SKU for the App Service plan. B1 is the smallest that supports Always On.')
-@allowed([
-  'B1'
-  'B2'
-  'P0v3'
-  'P1v3'
-])
-param appServicePlanSku string = 'B1'
+@description('Keep a warm instance (1) or scale to zero when idle (0). Zero costs less; the first request after idle pays a cold start.')
+@minValue(0)
+@maxValue(1)
+param minReplicas int = 1
 
 @description('Existing Microsoft Entra application (client) ID used to protect the site. Leave empty and the postprovision hook creates one.')
 param authClientId string = ''
@@ -116,21 +112,24 @@ module speechRoleForUser './modules/role-assignment.bicep' = if (!empty(principa
   }
 }
 
-module web './modules/app-service.bicep' = {
+module web './modules/container-app.bicep' = {
   name: 'web'
   scope: rg
   params: {
     location: location
     tags: union(tags, { 'azd-service-name': 'web' })
-    appServicePlanName: '${abbrs.webServerFarms}${resourceToken}'
-    appServiceName: '${abbrs.webSitesAppService}${resourceToken}'
-    sku: appServicePlanSku
+    containerAppsEnvironmentName: '${abbrs.appManagedEnvironments}${resourceToken}'
+    containerAppName: '${abbrs.appContainerApps}${resourceToken}'
+    containerRegistryName: '${abbrs.containerRegistryRegistries}${resourceToken}'
     managedIdentityId: identity.outputs.id
     managedIdentityClientId: identity.outputs.clientId
+    managedIdentityPrincipalId: identity.outputs.principalId
+    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     speechEndpoint: ai.outputs.endpoint
     speechRegion: location
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     authClientId: authClientId
+    minReplicas: minReplicas
   }
 }
 
@@ -143,3 +142,5 @@ output AZURE_AI_SERVICES_NAME string = ai.outputs.name
 output SERVICE_WEB_NAME string = web.outputs.name
 output SERVICE_WEB_URI string = web.outputs.uri
 output AZURE_CLIENT_ID string = identity.outputs.clientId
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = web.outputs.registryLoginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = web.outputs.registryName

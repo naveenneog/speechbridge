@@ -8,21 +8,26 @@ services:
   web:
     project: .
     language: js
-    host: appservice
-    dist: .
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: .
+      # Built by Azure Container Registry, not locally, so deploying this needs no Docker
+      # installed. That is what keeps "one command" true on a plain developer machine.
+      remoteBuild: true
 
 hooks:
-  # Creates the Microsoft Entra app registration and turns on Easy Auth, so `azd up`
-  # protects the site without anyone visiting the portal. Without this the credential
-  # endpoint would be published to the internet unauthenticated.
+  # Creates the Microsoft Entra app registration and turns on built-in authentication, so
+  # `azd up` yields a site only your organisation can open. It runs after provisioning
+  # because the redirect URI needs the site hostname, which does not exist before then.
   postprovision:
     posix:
       shell: sh
       run: ./scripts/postprovision.sh
       interactive: false
-      continueOnError: false
+      continueOnError: true
     windows:
       shell: pwsh
       run: ./scripts/postprovision.ps1
       interactive: false
-      continueOnError: false
+      continueOnError: true

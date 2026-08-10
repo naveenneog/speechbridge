@@ -74,13 +74,14 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
   const endpoint = validateEndpoint(required(env, "SPEECH_ENDPOINT").replace(/\/+$/, ""));
   const region = required(env, "SPEECH_REGION");
 
-  // WEBSITE_SITE_NAME is set only by App Service. There, the platform terminates TLS and
-  // forwards to us, so loopback-only would make the site unreachable — and Easy Auth is
-  // in front, so an authenticated principal is the right trust signal.
-  const inAppService = Boolean(env["WEBSITE_SITE_NAME"]?.trim());
+  // Set only by the hosting platform. Either means something is in front of us terminating
+  // TLS and forwarding, so binding loopback-only would make the app unreachable.
+  const inAzureHost = Boolean(
+    env["WEBSITE_SITE_NAME"]?.trim() || env["CONTAINER_APP_NAME"]?.trim(),
+  );
 
   const rawMode = env["ACCESS_MODE"]?.trim();
-  let accessMode: AccessMode = inAppService ? "authenticated" : "local";
+  let accessMode: AccessMode = inAzureHost ? "authenticated" : "local";
   if (rawMode) {
     if (rawMode !== "local" && rawMode !== "authenticated") {
       throw new Error(`ACCESS_MODE must be "local" or "authenticated", got "${rawMode}".`);
@@ -88,7 +89,9 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
     accessMode = rawMode;
   }
 
-  const host = env["HOST"]?.trim() || (inAppService ? "0.0.0.0" : DEFAULT_HOST);
+  // The bind follows the access mode: authenticated means a platform is authenticating
+  // callers in front of us, and that platform has to be able to reach us.
+  const host = env["HOST"]?.trim() || (accessMode === "authenticated" ? "0.0.0.0" : DEFAULT_HOST);
 
   const rawPort = env["PORT"]?.trim();
   let port = DEFAULT_PORT;

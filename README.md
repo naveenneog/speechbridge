@@ -35,7 +35,7 @@ The browser never receives a durable credential either. It gets a **Speech-scope
 expires in ten minutes**, minted server-side — never a Microsoft Entra access token, which
 would be accepted by every Cognitive Services resource the identity can reach.
 
-The deployed site sits behind **App Service built-in authentication (Microsoft Entra)**, and
+The deployed site sits behind **Container Apps built-in authentication (Microsoft Entra)**, and
 the application *additionally* refuses to mint a credential unless the platform supplies an
 authenticated principal. If authentication is misconfigured, the app **fails closed** — it
 stops working rather than publishing a credential-minting endpoint to the internet.
@@ -77,7 +77,7 @@ flowchart LR
         UI[SpeechBridge SPA<br/>microphone + playback]
     end
     subgraph Azure
-        EA[App Service<br/>Easy Auth · Microsoft Entra]
+        EA[Container Apps ingress<br/>Easy Auth · Microsoft Entra]
         APP[Express token broker<br/>user-assigned managed identity]
         AI[Azure AI Services<br/>Speech · disableLocalAuth]
         MON[Application Insights]
@@ -105,13 +105,21 @@ region and change over time — confirm with the
 
 | Resource | Driver | Indicative cost |
 |---|---|---|
-| App Service Plan **B1 Linux** | Always on | **$0.02/hour** (~$15/month) |
+| **Container Apps** (Consumption) | Per request; scales to zero | Free grant covers light demo use; set `MIN_REPLICAS=0` to idle at no cost |
+| Container Registry (Basic) | Image storage | about $0.17/day |
 | Azure AI Services **S0** | Per hour of audio processed | See [Speech pricing](https://azure.microsoft.com/pricing/details/cognitive-services/speech-services/) — billed only while speaking |
 | Log Analytics | Data ingested | **$2.76/GB** (first 5 GB/month typically free) |
 | Application Insights | Included in Log Analytics ingestion | — |
 
-The dominant fixed cost is the App Service plan. **Run `azd down` when you are finished** —
-a demo left running costs about $15/month doing nothing.
+Container Apps bills per request and can scale to zero, so an idle demo is close to free.
+The default keeps one warm replica to avoid a cold start on first use; set
+`azd env set MIN_REPLICAS 0` to idle at no compute cost. **Run `azd down` when you are
+finished** so the registry and workspace stop accruing too.
+
+> **Deployed and verified on 2026-08-10.** `azd up` provisioned the resource group, AI
+> Services account, managed identity, registry, Container Apps environment and app, built the
+> image remotely, created the Microsoft Entra app registration, and enabled sign-in.
+> An unauthenticated request to the deployed site returns `302` to the Microsoft sign-in page.
 
 > **S0 is required, not preferred.** The free tier permits one concurrent recognition and
 > caps text-to-speech at 20 transactions per 60 seconds; a floor change briefly overlaps two
@@ -133,8 +141,7 @@ azd up
 ```
 
 `azd up` asks for an environment name and region, then provisions the AI Services account
-with a custom subdomain, a managed identity with the Speech User role, the App Service plan
-and site, and Log Analytics — then deploys the app, creates the Microsoft Entra app
+with a custom subdomain, a managed identity with the Speech User role, the container registry, Container Apps environment and app, and Log Analytics — then deploys the app, creates the Microsoft Entra app
 registration and switches on sign-in. It prints your URL when it finishes.
 
 **Regions:** choose one that supports Azure AI Speech. The template restricts the parameter
@@ -198,7 +205,7 @@ node .ironclad/gate.mjs --stage packet     # the definition of done
 
 | Path | Responsibility |
 |---|---|
-| `infra/` | Bicep: AI Services, managed identity, RBAC, App Service, monitoring |
+| `infra/` | Bicep: AI Services, managed identity, RBAC, Container Apps, registry, monitoring |
 | `src/shared/languages.ts` | The 16 languages, recognition locales and verified voices |
 | `src/server/tokenBroker.ts` | Entra → Speech STS exchange, cached, refreshed at 80% of life |
 | `src/server/localGuard.ts` | Who may mint a credential: loopback locally, Entra principal when deployed |
@@ -259,7 +266,7 @@ that fails WCAG fails the build. What we did not know, and how each was closed, 
 - [Azure AI Speech — speech translation](https://learn.microsoft.com/azure/ai-services/speech-service/speech-translation)
 - [Authenticate with Microsoft Entra ID](https://learn.microsoft.com/azure/ai-services/speech-service/how-to-configure-azure-ad-auth)
 - [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/)
-- [App Service built-in authentication](https://learn.microsoft.com/azure/app-service/overview-authentication-authorization)
+- [Container Apps built-in authentication](https://learn.microsoft.com/azure/container-apps/authentication)
 - [Transparency note for Azure AI Speech](https://learn.microsoft.com/legal/cognitive-services/speech-service/speech-to-text/transparency-note)
 - [Speech SDK for JavaScript](https://learn.microsoft.com/javascript/api/microsoft-cognitiveservices-speech-sdk/)
 - Project decisions: [`docs/adr/`](docs/adr) · Roadmap: [`docs/ROADMAP.md`](docs/ROADMAP.md)
@@ -270,3 +277,4 @@ This project may contain trademarks or logos for projects, products, or services
 use of Microsoft trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general).
 Use of third-party trademarks or logos is subject to those third parties' policies.
+

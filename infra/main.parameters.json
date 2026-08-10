@@ -11,8 +11,8 @@
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
     },
-    "appServicePlanSku": {
-      "value": "${APP_SERVICE_PLAN_SKU=B1}"
+    "minReplicas": {
+      "value": "${MIN_REPLICAS=1}"
     },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID=}"

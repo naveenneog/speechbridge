@@ -114,6 +114,39 @@ describe("server configuration", () => {
     expect(config.accessMode).toBe("authenticated");
   });
 
+  it("binds all interfaces automatically when running in Container Apps", () => {
+    // Same reasoning; CONTAINER_APP_NAME is only set by Container Apps. Without this the
+    // ingress cannot reach the container and every request times out.
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      CONTAINER_APP_NAME: "ca-speechbridge",
+    });
+    expect(config.host).toBe("0.0.0.0");
+    expect(config.accessMode).toBe("authenticated");
+  });
+
+  it("binds all interfaces whenever a platform is handling authentication", () => {
+    // The general rule the two cases above are instances of: authenticated mode means
+    // something in front is authenticating callers, so loopback-only is always wrong.
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      ACCESS_MODE: "authenticated",
+    });
+    expect(config.host).toBe("0.0.0.0");
+  });
+
+  it("still allows an explicit HOST to win", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      ACCESS_MODE: "authenticated",
+      HOST: "127.0.0.1",
+    });
+    expect(config.host).toBe("127.0.0.1");
+  });
+
   it("refuses an unrecognised access mode rather than failing open", () => {
     expect(() =>
       loadConfig({

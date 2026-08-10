@@ -5,5 +5,8 @@
   "managedIdentityUserAssignedIdentities": "id-",
   "operationalInsightsWorkspaces": "log-",
   "webServerFarms": "plan-",
-  "webSitesAppService": "app-"
+  "webSitesAppService": "app-",
+  "appManagedEnvironments": "cae-",
+  "appContainerApps": "ca-",
+  "containerRegistryRegistries": "cr"
 }
