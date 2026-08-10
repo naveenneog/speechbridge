@@ -1,0 +1,14 @@
+# Ironclad: secrets never enter git
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.log

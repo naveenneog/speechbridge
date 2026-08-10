@@ -1,0 +1,71 @@
+{
+  "_readme": "The machine-checkable half of this project's contract. Enforced by .ironclad/gate.mjs. Loosening anything here requires an ADR stating why (anti-drift M1).",
+  "version": 1,
+  "name": "SpeechBridge",
+  "strictness": "standard",
+  "commands": {
+    "test": "npm test",
+    "lint": "npm run lint",
+    "typecheck": "npm run typecheck",
+    "build": "npm run build",
+    "a11y": null,
+    "coverage": "npm run coverage"
+  },
+  "quality": {
+    "maxFileLines": 400,
+    "maxTestFileLines": 800,
+    "maxDebtMarkers": 10,
+    "coverageFloor": 80,
+    "minTestRatio": 0.15,
+    "fileSizeExceptions": []
+  },
+  "ledger": {
+    "requireRoadmap": true,
+    "requireStatus": true,
+    "requireChangelog": true,
+    "requireAdr": true,
+    "maxUncommittedFiles": 40,
+    "maxUncommittedLines": 3000,
+    "maxCommitsWithoutAdr": 40,
+    "architectureSignificantPaths": [
+      "src/server/tokenBroker.ts",
+      "src/shared/contracts.ts",
+      "vite.config.ts",
+      "package.json"
+    ]
+  },
+  "architecture": {
+    "boundaries": [
+      {
+        "from": "src/client/**",
+        "forbid": ["@azure/identity", "express", ".*/server/.*"],
+        "why": "Browser code must never import credential or server libraries - bundling @azure/identity would ship a credential chain to every visitor"
+      },
+      {
+        "from": "src/server/**",
+        "forbid": [".*/client/.*"],
+        "why": "The token broker must not depend on UI code; it is independently deployable"
+      },
+      {
+        "from": "src/shared/**",
+        "forbid": [
+          ".*/client/.*",
+          ".*/server/.*",
+          "express",
+          "@azure/identity",
+          "microsoft-cognitiveservices-speech-sdk"
+        ],
+        "why": "Shared contracts must stay pure and runtime-agnostic so both sides can depend on them without pulling a runtime"
+      }
+    ]
+  },
+  "security": {
+    "secretAllowlist": [],
+    "auditDependencies": true
+  },
+  "tests": {
+    "skipAllowlist": []
+  },
+  "ignore": ["dist/**", "coverage/**"],
+  "commandTimeoutMs": 900000
+}
