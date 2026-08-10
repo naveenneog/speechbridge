@@ -7,11 +7,11 @@
       Given a supported language code, when the catalog is asked for its voice,
       then it returns a voice `shortName` that exists in the live service.
       Unknowns: U-10 (closed). Detector: `npm run verify:voices`.
-- [ ] P-2  Token broker: Entra → short-lived Speech STS token, cached and refreshed  ← ACTIVE
+- [x] P-2  Token broker: Entra → short-lived Speech STS token, cached and refreshed
       Given a valid credential, when `/api/speech-token` is called twice inside the cache
       window, then Azure is contacted once and both callers get the same unexpired token.
-      Unknowns: U-1, U-2, U-3, U-4.
-- [ ] P-3  Mic gate: never translate our own synthesized speech
+      Unknowns: U-1, U-2, U-3, U-4 (all closed).
+- [ ] P-3  Mic gate: never translate our own synthesized speech  ← ACTIVE
       Given playback is active, when recognition produces a result, then it is suppressed;
       and when playback ends, then recognition resumes.
       Unknowns: U-9.

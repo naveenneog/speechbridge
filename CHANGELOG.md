@@ -13,3 +13,12 @@ Format: [Keep a Changelog](https://keepachangelog.com).
   Arabic — each with a neural voice verified against the live service. (P-1)
 - `npm run verify:voices` re-checks every voice and translation code against Azure, so the
   catalog cannot silently drift out of date. (P-1)
+- A token broker that mints short-lived, Speech-scoped credentials for the browser, so no
+  API key and no broad Entra token ever reaches the client. Concurrent requests share one
+  exchange, and tokens refresh automatically at 80% of their life. (P-2)
+- The server now refuses to start on a misconfigured endpoint, explaining that Entra
+  authentication needs the resource's custom subdomain. (P-2)
+
+### Fixed
+- The server exited silently when its port was already taken, leaving a confusing 404 from
+  whatever else owned the port. It now names the clash and tells you to change `PORT`. (P-2)
