@@ -132,9 +132,21 @@ node .ironclad/gate.mjs --stage packet   # the definition of done
 that was correct at commit time can quietly stop being true. It hits the live service and fails if
 anything we claim to support no longer exists.
 
-`verify:e2e` is the one that proves the product claim. It feeds recorded English speech into
-Chromium's microphone, drives the real UI, and fails unless a Hindi translation appears in the
-transcript with a measured latency.
+`verify:e2e` is the one that proves the product claim. It feeds recorded speech into Chromium's
+microphone, drives the real UI, and checks **both directions** — because proving one direction
+proves half a product:
+
+```
+A speaks English -> B hears Hindi
+  heard      : Good morning.
+  translated : सुप्रभात।  [lang=hi]
+  latency    : 0.2s · 0.4s · 1.2s
+
+B speaks Hindi   -> A hears English
+  heard      : नमस्ते।
+  translated : Hello.  [lang=en]
+  latency    : 0.3s · 0.5s · 1.3s
+```
 
 ---
 

@@ -26,9 +26,20 @@ if (!endpoint || !region) {
   process.exit(2);
 }
 
-const SENTENCE =
-  "Good morning. I would like to schedule the project review for next Tuesday afternoon.";
-const VOICE = "en-US-AndrewMultilingualNeural";
+const UTTERANCES = [
+  {
+    file: "en-utterance.wav",
+    locale: "en-US",
+    voice: "en-US-AndrewMultilingualNeural",
+    text: "Good morning. I would like to schedule the project review for next Tuesday afternoon.",
+  },
+  {
+    file: "hi-utterance.wav",
+    locale: "hi-IN",
+    voice: "hi-IN-AaravNeural",
+    text: "नमस्ते। मैं कल सुबह बैठक में शामिल हो सकता हूँ।",
+  },
+];
 
 const credential = new DefaultAzureCredential();
 const entra = await credential.getToken("https://cognitiveservices.azure.com/.default");
@@ -47,33 +58,34 @@ if (!sts.ok) {
 }
 const speechToken = await sts.text();
 
-const ssml =
-  `<speak version='1.0' xml:lang='en-US'>` +
-  `<voice name='${VOICE}'>` +
-  // Leading and trailing silence so the recognizer sees a clean utterance boundary
-  // when Chromium loops the file.
-  `<break time='700ms'/>${SENTENCE}<break time='1500ms'/>` +
-  `</voice></speak>`;
-
-const audio = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${speechToken}`,
-    "Content-Type": "application/ssml+xml",
-    "X-Microsoft-OutputFormat": "riff-16khz-16bit-mono-pcm",
-    "User-Agent": "speechbridge-fixture",
-  },
-  body: ssml,
-});
-if (!audio.ok) {
-  console.error(`Synthesis failed: ${audio.status} ${await audio.text()}`);
-  process.exit(2);
-}
-
 const outDir = resolve(here, "../fixtures");
 mkdirSync(outDir, { recursive: true });
-const outFile = resolve(outDir, "en-utterance.wav");
-writeFileSync(outFile, Buffer.from(await audio.arrayBuffer()));
 
-console.log(`Wrote ${outFile}`);
-console.log(`Sentence: "${SENTENCE}"`);
+for (const utterance of UTTERANCES) {
+  const ssml =
+    `<speak version='1.0' xml:lang='${utterance.locale}'>` +
+    `<voice name='${utterance.voice}'>` +
+    // Leading and trailing silence so the recognizer sees a clean utterance boundary
+    // when Chromium loops the file.
+    `<break time='700ms'/>${utterance.text}<break time='1500ms'/>` +
+    `</voice></speak>`;
+
+  const audio = await fetch(`https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${speechToken}`,
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": "riff-16khz-16bit-mono-pcm",
+      "User-Agent": "speechbridge-fixture",
+    },
+    body: ssml,
+  });
+  if (!audio.ok) {
+    console.error(`Synthesis failed for ${utterance.file}: ${audio.status} ${await audio.text()}`);
+    process.exit(2);
+  }
+
+  const outFile = resolve(outDir, utterance.file);
+  writeFileSync(outFile, Buffer.from(await audio.arrayBuffer()));
+  console.log(`Wrote ${outFile}  (${utterance.locale}) "${utterance.text}"`);
+}

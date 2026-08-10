@@ -17,3 +17,4 @@ Thumbs.db
 browser-check*.png
 fixtures/
 e2e-result.png
+e2e-*.png
