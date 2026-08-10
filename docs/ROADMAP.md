@@ -29,11 +29,13 @@
 - [ ] P-8  Push a refreshed token onto a running recognizer (U-13)
       Today a single held floor is bounded by the ~10-minute token life. Given a floor held
       past expiry, when the token refreshes, then recognition continues uninterrupted.
-- [ ] P-9  Benchmark fused synthesis against the chained synthesizer
-      ADR-0005 chose an explicitly chained `SpeechSynthesizer`. The SDK does support
+- [ ] P-9  Benchmark fused synthesis against the chained synthesizer — **evidence now exists**
+      End-to-end measurement in Chromium (2026-08-10) gives caption 0.2 s, translation
+      0.3–0.4 s, audible 1.3–2.4 s. The synthesis round trip is therefore ~75–85% of total
+      latency and is the variable part. ADR-0005 said to revisit the chained synthesizer
+      "if the measured synthesis leg dominates". It does. The SDK supports
       `SpeechTranslationConfig.voiceName` with a `synthesizing` event for a single target,
-      so the extra round trip should be measured, not assumed. The latency meter is the
-      instrument; if fused wins, supersede ADR-0005.
+      which is exactly our shape. Measure it; if fused wins, supersede ADR-0005.
 - [ ] P-10 Separate input, output and connection state from the echo-suppression gate
       `conversation.ts` currently derives its whole user-visible phase from `micGate`, which
       cannot represent an engine that listens and speaks at once.

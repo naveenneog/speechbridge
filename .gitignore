@@ -15,3 +15,5 @@ Thumbs.db
 
 # Verification artifacts
 browser-check*.png
+fixtures/
+e2e-result.png

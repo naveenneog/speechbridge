@@ -338,6 +338,14 @@ select:disabled {
   color: oklch(0.15 0.03 74.6);
 }
 
+/* Hover must not out-specify the pressed state — losing the amber here would erase the
+   single clearest signal in the interface at the exact moment the pointer is on it. */
+.btn--primary[aria-pressed="true"]:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--primary) 88%, var(--ink));
+  border-color: var(--primary);
+  color: oklch(0.15 0.03 74.6);
+}
+
 .btn__key {
   font-family: var(--font-mono);
   font-size: var(--text-xs);

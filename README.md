@@ -114,12 +114,16 @@ matter are unit-tested without a network, a microphone or a browser.
 ## Commands
 
 ```powershell
-npm test              # 125 unit tests
+npm test              # unit tests
 npm run coverage      # coverage, floor enforced at 80%
 npm run lint
 npm run typecheck
 npm run build
-npm run verify:voices # re-check every voice + language code against live Azure
+
+npm run verify:voices    # re-check every voice + language code against live Azure
+npm run fixture:speech   # synthesize the spoken WAV used by the e2e check
+npm run verify:e2e       # play it into a real browser, assert Hindi comes out
+npm run verify:browser   # page loads, keyboard works, no console errors
 
 node .ironclad/gate.mjs --stage packet   # the definition of done
 ```
@@ -128,24 +132,40 @@ node .ironclad/gate.mjs --stage packet   # the definition of done
 that was correct at commit time can quietly stop being true. It hits the live service and fails if
 anything we claim to support no longer exists.
 
+`verify:e2e` is the one that proves the product claim. It feeds recorded English speech into
+Chromium's microphone, drives the real UI, and fails unless a Hindi translation appears in the
+transcript with a measured latency.
+
 ---
 
 ## Latency, honestly
 
-Measured against live Azure with a pre-recorded utterance pushed at once:
+Measured end to end **in Chromium against live Azure**, English→Hindi, by playing a recorded
+utterance into the browser's microphone (`npm run verify:e2e`):
 
 | Milestone | Time |
 |---|---|
-| First partial caption | ~1.5 s |
-| Settled translation | ~2.9 s |
+| First caption on screen | **0.2 s** |
+| Translation settled | **0.3 – 0.4 s** |
+| Listener actually hears it | **1.3 – 2.4 s** |
 
-The dominant cost is end-of-utterance silence detection: the recognizer waits for a pause before
-committing a final result. That's tuned down to 350 ms via
-`Speech_SegmentationSilenceTimeoutMs` (documented range 100–5000, default 500), trading a small
-risk of splitting a sentence for a noticeably snappier turnaround.
+Read that third row carefully, because it is the interesting one: recognition and translation
+are consistently fast, while **the speech synthesis round trip dominates and is the variable
+part** — roughly 1 s on a warm connection, over 2 s on a cold one.
 
-The interface displays all three timings per turn — time to caption, time to translation, time
-until the other person heard it — so you can see the real number instead of trusting a claim.
+That is a measurement, not a guess, and it directly answers the question
+[ADR-0005](docs/adr/0005-recognizer-per-direction.md) left open. That ADR chose to chain an
+explicit `SpeechSynthesizer` rather than use the recognizer's built-in `Synthesizing` event, and
+said the decision should be revisited "if the measured synthesis leg dominates total latency".
+It does. Benchmarking the fused path is packet P-9 on the roadmap.
+
+The other tunable is end-of-utterance detection: the recognizer waits for a pause before
+committing, set to 350 ms via `Speech_SegmentationSilenceTimeoutMs` (documented range
+100–5000, default 500). That is why the fixture's opening sentence commits on its own — a
+short pause ends the phrase. It is the deliberate trade for a snappier turnaround.
+
+The interface shows all three timings on every turn, so you see the real numbers rather than
+trusting this table.
 
 ---
 

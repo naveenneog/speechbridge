@@ -129,4 +129,10 @@ describe("stylesheet discipline", () => {
   it("has no gradient text", () => {
     expect(css).not.toMatch(/background-clip:\s*text/);
   });
+
+  it("keeps the pressed floor button amber on hover", () => {
+    // Hover is more specific than [aria-pressed], so without an explicit rule the "who
+    // holds the floor" signal vanishes under the pointer.
+    expect(css).toMatch(/\.btn--primary\[aria-pressed="true"\]:hover/);
+  });
 });
