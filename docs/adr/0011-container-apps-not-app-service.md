@@ -75,7 +75,7 @@ template. Both took a real deployment.
 ## Consequences
 
 - **Good:** `azd up` now genuinely works end to end. Verified: revision Running, app
-  registration `59ef30c7-…` created automatically, unauthenticated request returns 302 to the
+  registration created automatically, unauthenticated request returns 302 to the
   Microsoft sign-in page.
 - **Good:** cheaper at rest and it works in quota-constrained subscriptions.
 - **Cost:** an extra resource to reason about (the container registry) and a Dockerfile to
@@ -89,3 +89,4 @@ If Container Apps proves unavailable in a target subscription the way App Servic
 the same `azd` service definition supports `host: appservice` with the module deleted in this
 ADR still in git history. The lesson to keep is the process one: **validate is not deploy**,
 and an accelerator's central claim is not proven until someone has actually run it.
+

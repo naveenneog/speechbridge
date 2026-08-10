@@ -54,7 +54,7 @@ SECURITY: BLOCK -> resolved
     reachable by anyone on the LAN while the banner said "localhost"
                                                            -> fixed: loopback default,
                                                               verified unreachable from
-                                                              10.46.0.19
+                                                              this machine's LAN address
   ! no Host/Origin check - DNS rebinding could read the token -> fixed, localGuard.ts
   ! SPEECH_ENDPOINT unvalidated; a typo could POST the Entra token to a third party
                                                            -> fixed: https + Azure host only
@@ -93,10 +93,11 @@ recognizer's error path as the detector. Packet P-8.
 
 The Azure resource is real and already provisioned:
 
-- Resource group `rg-speech-bridge`, account `speechbridge27252`, region `eastus2`,
-  kind `AIServices`, SKU `S0`, custom subdomain `speechbridge27252`
+- Resource group `<your-resource-group>`, account `<your-resource-name>`, region `eastus2`,
+  kind `AIServices`, SKU `S0`, custom subdomain `<your-resource-name>`
 - The signed-in principal holds **Cognitive Services Speech User** on it
 - There are **no keys** and there cannot be (ADR-0002) — authenticate with `az login`
 
 The server binds to **127.0.0.1** deliberately. Setting `HOST` widens it and prints a warning;
 do not do that without first adding authentication to `/api/speech-token`.
+

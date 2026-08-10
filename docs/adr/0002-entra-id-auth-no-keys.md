@@ -34,7 +34,7 @@ Create a dedicated `AIServices` account with an explicit custom subdomain, and a
 Microsoft Entra ID throughout.
 
 ```
-az cognitiveservices account create -n <name> -g rg-speech-bridge -l eastus2 \
+az cognitiveservices account create -n <name> -g <your-resource-group> -l eastus2 \
   --kind AIServices --sku S0 --custom-domain <name> --yes
 ```
 
@@ -60,3 +60,4 @@ If `az cognitiveservices account keys list` starts succeeding on a new resource,
 lifted and the key path becomes available — but we would still not take it, because the Entra path
 is strictly better. The decision only becomes wrong if Entra auth fails in a deployment target that
 cannot obtain a managed identity.
+
