@@ -22,3 +22,10 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 ### Fixed
 - The server exited silently when its port was already taken, leaving a confusing 404 from
   whatever else owned the port. It now names the clash and tells you to change `PORT`. (P-2)
+
+### Added (continued)
+- The microphone is now deaf while the translation is being spoken, so the app can never
+  hear its own voice and translate it in an endless loop. The interface shows which state
+  it is in, so it never looks like it has silently stopped listening. (P-3)
+- Per-turn latency measurement — time to first caption, time to the settled translation,
+  and time until the other person hears it. (P-4)

@@ -11,14 +11,14 @@
       Given a valid credential, when `/api/speech-token` is called twice inside the cache
       window, then Azure is contacted once and both callers get the same unexpired token.
       Unknowns: U-1, U-2, U-3, U-4 (all closed).
-- [ ] P-3  Mic gate: never translate our own synthesized speech  ← ACTIVE
+- [x] P-3  Mic gate: never translate our own synthesized speech
       Given playback is active, when recognition produces a result, then it is suppressed;
       and when playback ends, then recognition resumes.
-      Unknowns: U-9.
-- [ ] P-4  Latency metering: measurable, displayable timings per utterance
+      Unknowns: U-9 (guarded by tests/micGate.test.ts).
+- [x] P-4  Latency metering: measurable, displayable timings per utterance
       Given an utterance, when first partial / final / audio-start occur, then each is
       recorded as a millisecond offset from speech start.
-- [ ] P-5  Translation session: recognizer lifecycle, partials, finals, spoken output
+- [ ] P-5  Translation session: recognizer lifecycle, partials, finals, spoken output  ← ACTIVE
       Given a speaker turn, when audio is spoken, then partial captions stream, a final
       translation is produced, and the translated audio plays in the listener's language.
       Unknowns: U-5, U-6, U-7, U-8.
