@@ -1,16 +1,22 @@
 # Status
 
-**Active packet:** P-7 — Council review, security hardening, README
-**State:** GREEN — gate passing, ready to commit
+**Active packet:** none — M1 complete. Next up is P-8 (token refresh mid-session).
+**State:** GREEN — gate 26/26, working tree clean
 **Branch:** main
 
-## Acceptance criteria
+## M1 delivered
 
-- [x] Five council verdicts recorded, every BLOCK fixed with a regression test
-- [x] End-to-end verification against live Azure (token minted, page served, bundle clean)
-- [x] Token endpoint proven unreachable from the LAN
-- [x] README written
-- [x] Coverage above the 80% floor, honestly measured
+- [x] P-0..P-6  Foundation, keyless token broker, mic gate, latency meter, conversation, UI
+- [x] P-7  Council review + security hardening (four real defects found and fixed)
+- [x] P-9  Synthesis benchmark → pre-warmed connections (ADR-0009)
+
+**Measured, in Chromium against live Azure, both directions:**
+
+| Milestone | At P-7 | Now |
+|---|---|---|
+| First caption | 0.2 s | 0.2 s |
+| Translation settled | 0.4–0.5 s | 0.2–0.5 s |
+| Listener hears it | 1.2–2.4 s | **0.4–0.7 s** |
 
 ## Council verdicts — 2026-08-10
 
@@ -71,10 +77,11 @@ UX: PASS-WITH-NOTES
 ## Commands that prove it
 
 ```powershell
-npm test
-npm run coverage
+npm test                 # 167 unit tests
+npm run coverage         # 80% floor enforced
+npm run verify:e2e       # real speech through a real browser, both directions
+npm run bench:synthesis  # re-ask the ADR-0009 question if Azure changes
 node .ironclad/gate.mjs --stage packet
-npm run verify:voices
 ```
 
 ## Open unknowns
