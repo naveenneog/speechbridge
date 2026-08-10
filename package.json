@@ -19,7 +19,8 @@
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "verify:voices": "tsx scripts/verify-voices.ts"
+    "verify:voices": "tsx scripts/verify-voices.ts",
+    "verify:browser": "node scripts/browser-check.mjs"
   },
   "dependencies": {
     "@azure/identity": "4.13.1",
@@ -40,3 +41,4 @@
     "vitest": "4.1.10"
   }
 }
+

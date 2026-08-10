@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark" />
     <title>SpeechBridge — live interpreted conversation</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23171717'/%3E%3Cpath d='M9 11v10M15 7v18M21 12v8M27 15v2M3 15v2' stroke='%23e79a3c' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -34,7 +38,7 @@
         <section class="channel" id="channel-a" data-live="false" aria-labelledby="who-a">
           <div class="channel__head">
             <span class="channel__who" id="who-a">You</span>
-            <span class="channel__badge" id="badge-a" hidden>Speaking</span>
+            <span class="channel__badge" id="badge-a" hidden>Live</span>
           </div>
 
           <div class="field">
@@ -63,7 +67,7 @@
         <section class="channel" id="channel-b" data-live="false" aria-labelledby="who-b">
           <div class="channel__head">
             <span class="channel__who" id="who-b">Them</span>
-            <span class="channel__badge" id="badge-b" hidden>Speaking</span>
+            <span class="channel__badge" id="badge-b" hidden>Live</span>
           </div>
 
           <div class="field">
@@ -93,6 +97,11 @@
       <section class="transcript" aria-labelledby="transcript-heading">
         <div class="transcript__head">
           <h2 id="transcript-heading">Conversation</h2>
+          <p class="transcript__legend" id="latency-legend">
+            <span class="visually-hidden">Timings shown per turn:</span>
+            caption <span aria-hidden="true">·</span> translation
+            <span aria-hidden="true">·</span> heard
+          </p>
           <button type="button" class="btn" id="release" disabled>
             Release the floor
             <kbd class="btn__key">Esc</kbd>
@@ -108,3 +117,4 @@
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
+

@@ -12,3 +12,6 @@ coverage/
 .DS_Store
 Thumbs.db
 *.log
+
+# Verification artifacts
+browser-check*.png

@@ -248,7 +248,8 @@ select:hover:not(:disabled) {
 }
 
 select:disabled {
-  opacity: 0.5;
+  /* Still legible: these show the chosen languages while a turn is in progress. */
+  opacity: 0.75;
   cursor: not-allowed;
 }
 
@@ -370,12 +371,22 @@ select:disabled {
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .transcript__head h2 {
   margin: 0;
   font-size: var(--text-sm);
   font-weight: 600;
+  color: var(--muted);
+}
+
+/* Explains the three numbers on each turn without needing a hover. */
+.transcript__legend {
+  margin: 0;
+  margin-inline-end: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
   color: var(--muted);
 }
 
