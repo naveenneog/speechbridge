@@ -57,6 +57,13 @@ export interface SpeakHooks {
 export interface SpeechPlayer {
   speak(text: string, voice: string, hooks?: SpeakHooks): Promise<void>;
   cancel(): void;
+  /**
+   * Opens the synthesis connection ahead of time for a voice we expect to use.
+   *
+   * Measured: a cold connection costs ~557 ms on the first utterance, which is 20% of the
+   * whole turn. Warming it while the user is still speaking makes that free.
+   */
+  prepare?(voice: string): void;
 }
 
 /** Control over the capture device itself, so playback cannot be recorded at all. */
@@ -138,6 +145,12 @@ export function createConversation(options: ConversationOptions): Conversation {
 
   function setMuted(muted: boolean): void {
     microphone?.setMuted(muted);
+  }
+
+  /** Opens the synthesis connection for whoever will be listening, while they still talk. */
+  function warmListenerVoice(speaker: ParticipantId): void {
+    const listener = requireLanguage(options.participants[OTHER[speaker]].language);
+    options.player.prepare?.(listener.voice);
   }
 
   function channelFor(speaker: ParticipantId): TranslationChannel {
@@ -254,7 +267,11 @@ export function createConversation(options: ConversationOptions): Conversation {
       // saying "microphone muted" until the user happened to speak again.
       schedule(() => {
         if (gate.phase === "cooldown") gate.acceptsSpeech(now());
-        if (floor !== null) setMuted(false);
+        if (floor !== null) {
+          setMuted(false);
+          // The speaker still holds the floor, so another utterance is likely next.
+          warmListenerVoice(floor);
+        }
         emit();
       }, PLAYBACK_TAIL_MS);
     }
@@ -293,6 +310,9 @@ export function createConversation(options: ConversationOptions): Conversation {
       gate.beginTurn(now());
       meter.startUtterance(now());
       setMuted(false);
+      // Warm the connection now, during the seconds the speaker is talking, so the
+      // translation does not pay for a cold socket when they stop.
+      warmListenerVoice(participant);
       emit();
 
       try {

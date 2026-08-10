@@ -22,7 +22,8 @@
     "verify:voices": "tsx scripts/verify-voices.ts",
     "verify:browser": "node scripts/browser-check.mjs",
     "fixture:speech": "node scripts/make-fixture.mjs",
-    "verify:e2e": "node scripts/verify-e2e.mjs"
+    "verify:e2e": "node scripts/verify-e2e.mjs",
+    "bench:synthesis": "node scripts/bench-synthesis.mjs"
   },
   "dependencies": {
     "@azure/identity": "4.13.1",
@@ -43,5 +44,6 @@
     "vitest": "4.1.10"
   }
 }
+
 
 

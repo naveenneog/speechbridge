@@ -48,6 +48,12 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 - If the microphone fails to open, the app says so and lets you try again, instead of
   claiming you hold the floor over a dead microphone.
 
+### Performance
+- **Translations are now heard about three times sooner** — roughly 0.5 s after you stop
+  speaking, down from 1.2–2.4 s. The synthesis connection is opened while you are still
+  talking, so the translation no longer waits for a handshake at the exact moment you
+  finish. (P-9, ADR-0009)
+
 ### Security
 - The token endpoint now listens on loopback only. It previously bound every network
   interface, so anyone on the same network could mint Azure Speech tokens against this

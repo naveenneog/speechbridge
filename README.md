@@ -158,18 +158,19 @@ utterance into the browser's microphone (`npm run verify:e2e`):
 | Milestone | Time |
 |---|---|
 | First caption on screen | **0.2 s** |
-| Translation settled | **0.3 – 0.4 s** |
-| Listener actually hears it | **1.3 – 2.4 s** |
+| Translation settled | **0.2 – 0.5 s** |
+| Listener actually hears it | **0.4 – 0.7 s** |
 
-Read that third row carefully, because it is the interesting one: recognition and translation
-are consistently fast, while **the speech synthesis round trip dominates and is the variable
-part** — roughly 1 s on a warm connection, over 2 s on a cold one.
+Those numbers are the result of chasing the third row down. It originally read **1.2–2.4 s**,
+because speech synthesis was paying for a cold TLS + WebSocket handshake at the worst possible
+moment — right after the speaker stopped talking.
 
-That is a measurement, not a guess, and it directly answers the question
-[ADR-0005](docs/adr/0005-recognizer-per-direction.md) left open. That ADR chose to chain an
-explicit `SpeechSynthesizer` rather than use the recognizer's built-in `Synthesizing` event, and
-said the decision should be revisited "if the measured synthesis leg dominates total latency".
-It does. Benchmarking the fused path is packet P-9 on the roadmap.
+`scripts/bench-synthesis.mjs` measured three strategies against live Azure. Switching to the
+recognizer's built-in fused synthesis would have saved 743 ms but required rebuilding playback,
+barge-in and the microphone gate around a streaming source. Simply **opening the synthesis
+connection early — while the user is still speaking, when the wait is free — recovered 75% of
+that** for a few lines of code. The synthesis leg fell from ~800–2000 ms to about 200 ms.
+Full reasoning in [ADR-0009](docs/adr/0009-prewarm-synthesis-connection.md).
 
 The other tunable is end-of-utterance detection: the recognizer waits for a pause before
 committing, set to 350 ms via `Speech_SegmentationSilenceTimeoutMs` (documented range

@@ -3,10 +3,13 @@ import { createConversation } from "../src/client/conversation.js";
 import type { ChannelCallbacks, TranslationChannel } from "../src/client/conversation.js";
 
 /** A recording stand-in for the Speech SDK, so the orchestrator can be tested in isolation. */
-function harness(options: { speakFails?: boolean; startFails?: boolean } = {}) {
+function harness(
+  options: { speakFails?: boolean; startFails?: boolean; noPrepare?: boolean } = {},
+) {
   const started: string[] = [];
   const stopped: string[] = [];
   const spoken: { text: string; voice: string }[] = [];
+  const prepared: string[] = [];
   const muteLog: boolean[] = [];
   const scheduled: { fn: () => void; ms: number }[] = [];
   let cancels = 0;
@@ -39,6 +42,13 @@ function harness(options: { speakFails?: boolean; startFails?: boolean } = {}) {
       cancel: () => {
         cancels += 1;
       },
+      ...(options.noPrepare
+        ? {}
+        : {
+            prepare: (voice: string) => {
+              prepared.push(voice);
+            },
+          }),
     },
     microphone: { setMuted: (muted) => muteLog.push(muted) },
     schedule: (fn, ms) => {
@@ -52,6 +62,7 @@ function harness(options: { speakFails?: boolean; startFails?: boolean } = {}) {
     started,
     stopped,
     spoken,
+    prepared,
     muteLog,
     clock,
     cancelCount: () => cancels,
@@ -253,6 +264,40 @@ describe("conversation", () => {
     // The floor was released, so the same participant can try again.
     await h.conversation.takeFloor("a").catch(() => undefined);
     expect(h.conversation.getState().floor).toBeNull();
+  });
+
+  it("warms the listener's voice connection as soon as the floor is taken", async () => {
+    // A cold synthesis connection costs ~557ms measured — a fifth of the whole turn.
+    // Opening it while the speaker is still talking makes that cost free.
+    const h = harness();
+    await h.conversation.takeFloor("a");
+    expect(h.prepared).toEqual(["hi-IN-AnanyaNeural"]);
+  });
+
+  it("warms the other voice when the floor changes direction", async () => {
+    const h = harness();
+    await h.conversation.takeFloor("a");
+    await h.conversation.takeFloor("b");
+    expect(h.prepared).toEqual(["hi-IN-AnanyaNeural", "en-US-AvaMultilingualNeural"]);
+  });
+
+  it("re-warms after a turn so the next utterance is fast too", async () => {
+    const h = harness();
+    await h.conversation.takeFloor("a");
+    h.emit("a").onSpeechStart();
+    await h.emit("a").onRecognized("hello", "नमस्ते");
+    h.runScheduled();
+    // Once for the floor, once after the turn completes.
+    expect(h.prepared.filter((v) => v === "hi-IN-AnanyaNeural").length).toBe(2);
+  });
+
+  it("works with a player that cannot warm up", async () => {
+    // prepare() is optional on the seam; a player without it must still function.
+    const h = harness({ noPrepare: true });
+    await h.conversation.takeFloor("a");
+    h.emit("a").onSpeechStart();
+    await h.emit("a").onRecognized("hello", "नमस्ते");
+    expect(h.conversation.getState().transcript).toHaveLength(1);
   });
 
   it("cancels playback and stops the channel when the floor is released", async () => {
