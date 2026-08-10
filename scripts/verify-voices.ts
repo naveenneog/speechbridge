@@ -9,8 +9,16 @@
  *
  * Requires `az login` (or any DefaultAzureCredential source) and the env vars in .env.example.
  */
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import { DefaultAzureCredential } from "@azure/identity";
 import { LANGUAGES } from "../src/shared/languages.js";
+
+const envFile = resolve(dirname(fileURLToPath(import.meta.url)), "../.env");
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile);
+}
 
 const endpoint = process.env["SPEECH_ENDPOINT"];
 const region = process.env["SPEECH_REGION"];
