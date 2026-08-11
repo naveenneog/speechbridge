@@ -113,7 +113,7 @@ describe("statusLabel", () => {
 
   it("tells an idle user what to actually do", () => {
     // "Ready" alone leaves a first-time user staring at the screen.
-    expect(statusLabel("idle")).toMatch(/hold/i);
+    expect(statusLabel("idle")).toMatch(/tap/i);
   });
 
   it("never returns an empty label", () => {

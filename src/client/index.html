@@ -17,8 +17,8 @@
         <div>
           <h1>SpeechBridge</h1>
           <p>
-            Press and hold to speak. The other person hears you in their language, about half
-            a second later.
+            Tap to speak. The other person hears you in their language, about half a second
+            later.
           </p>
         </div>
         <div class="status" id="status" data-state="connecting" role="status">
@@ -64,7 +64,7 @@
                 <path d="M5 11v1a7 7 0 0 0 14 0v-1" />
                 <path d="M12 19v3" />
               </svg>
-              <span class="btn__label" id="floor-a-label">Hold to speak</span>
+              <span class="btn__label" id="floor-a-label">Tap to speak</span>
               <kbd class="btn__key">1</kbd>
             </button>
           </div>
@@ -101,7 +101,7 @@
                 <path d="M5 11v1a7 7 0 0 0 14 0v-1" />
                 <path d="M12 19v3" />
               </svg>
-              <span class="btn__label" id="floor-b-label">Hold to speak</span>
+              <span class="btn__label" id="floor-b-label">Tap to speak</span>
               <kbd class="btn__key">2</kbd>
             </button>
           </div>
@@ -109,8 +109,8 @@
       </main>
 
       <p class="talk-help" id="talk-help">
-        Press and hold to talk, or press <kbd>1</kbd> / <kbd>2</kbd> to keep the microphone on
-        until you press <kbd>Esc</kbd>.
+        Tap a microphone to start talking, tap it again to stop. Or press <kbd>1</kbd> /
+        <kbd>2</kbd> to switch speaker, and <kbd>Esc</kbd> to stop.
       </p>
 
       <section class="transcript" aria-labelledby="transcript-heading">
@@ -127,7 +127,7 @@
           </button>
         </div>
         <p class="empty" id="transcript-empty">
-          Nothing said yet. Pick a language for each side, then hold a microphone button and talk.
+          Nothing said yet. Pick a language for each side, then tap a microphone and start talking.
         </p>
         <ul class="transcript__list" id="transcript" aria-live="polite"></ul>
       </section>
@@ -136,5 +136,6 @@
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
+
 
 

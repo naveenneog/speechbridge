@@ -80,46 +80,53 @@ for (const vp of VIEWPORTS) {
   await context.close();
 }
 
-// Interaction: does press-and-hold actually open and close the microphone?
+// Interaction: does clicking toggle the microphone on and off again?
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, permissions: ["microphone"] });
 const page = await context.newPage();
 await page.goto(BASE, { waitUntil: "networkidle" });
 await page.waitForSelector('#status[data-state="ready"]', { timeout: 20000 });
 
 const talk = page.locator("#floor-a");
-await talk.hover();
-await page.mouse.down();
+await talk.click();
 await page.waitForTimeout(1500);
-const whileHeld = {
+const afterFirstClick = {
   pressed: await talk.getAttribute("aria-pressed"),
   label: (await page.locator("#floor-a-label").textContent())?.trim(),
   live: await page.locator("#channel-a").getAttribute("data-live"),
 };
-await page.screenshot({ path: resolve(here, "../ui-holding.png"), fullPage: true });
-await page.mouse.up();
+await page.screenshot({ path: resolve(here, "../ui-talking.png"), fullPage: true });
+
+// Clicking the same button again must stop it — the control you start with is the
+// control you stop with.
+await talk.click();
 await page.waitForTimeout(1200);
-const afterRelease = {
+const afterSecondClick = {
   pressed: await talk.getAttribute("aria-pressed"),
   label: (await page.locator("#floor-a-label").textContent())?.trim(),
 };
 
-console.log("\nhold  ->", JSON.stringify(whileHeld));
-console.log("release ->", JSON.stringify(afterRelease));
+console.log("\nclick    ->", JSON.stringify(afterFirstClick));
+console.log("click again ->", JSON.stringify(afterSecondClick));
 
-if (whileHeld.pressed !== "true") problems.push("holding did not open the microphone");
-if (whileHeld.label !== "Listening…") problems.push(`held label was "${whileHeld.label}"`);
-if (afterRelease.pressed !== "false") problems.push("releasing did not close the microphone");
+if (afterFirstClick.pressed !== "true") problems.push("clicking did not open the microphone");
+if (!afterFirstClick.label?.startsWith("Listening")) {
+  problems.push(`active label was "${afterFirstClick.label}"`);
+}
+if (afterSecondClick.pressed !== "false") problems.push("clicking again did not stop it");
+if (afterSecondClick.label !== "Tap to speak") {
+  problems.push(`idle label was "${afterSecondClick.label}"`);
+}
 
-// Keyboard latch must still work for anyone who cannot hold a press.
+// Keyboard must reach the same states.
 await page.keyboard.press("1");
 await page.waitForTimeout(1200);
-const latched = await talk.getAttribute("aria-pressed");
+const viaKeyboard = await talk.getAttribute("aria-pressed");
 await page.keyboard.press("Escape");
 await page.waitForTimeout(800);
-const unlatched = await talk.getAttribute("aria-pressed");
-console.log(`keyboard latch -> pressed=${latched}, after Esc=${unlatched}`);
-if (latched !== "true") problems.push("keyboard latch (1) did not open the microphone");
-if (unlatched !== "false") problems.push("Esc did not release the microphone");
+const afterEscape = await talk.getAttribute("aria-pressed");
+console.log(`keyboard -> pressed=${viaKeyboard}, after Esc=${afterEscape}`);
+if (viaKeyboard !== "true") problems.push("keyboard (1) did not open the microphone");
+if (afterEscape !== "false") problems.push("Esc did not release the microphone");
 
 await browser.close();
 
@@ -127,4 +134,4 @@ if (problems.length) {
   console.error(`\nFAILED:\n${problems.map((p) => `  x ${p}`).join("\n")}`);
   process.exit(1);
 }
-console.log("\nPASS — responsive at every width, hold-to-talk and keyboard latch both work.");
+console.log("\nPASS — responsive at every width, click toggles the microphone, keyboard works.");

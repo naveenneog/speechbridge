@@ -136,8 +136,8 @@ describe("stylesheet discipline", () => {
     expect(css).toMatch(/\.btn--talk\[aria-pressed="true"\]:hover/);
   });
 
-  it("disables text selection on the hold-to-talk button", () => {
-    // Press-and-hold otherwise selects the label and, on iOS, opens the callout menu.
+  it("disables text selection on the talk button", () => {
+    // A quick double-tap would otherwise select the label instead of toggling.
     expect(css).toMatch(/\.btn--talk[\s\S]*?user-select:\s*none/);
   });
 

@@ -159,7 +159,7 @@ function renderPanel(state: ConversationState, id: ParticipantId): void {
 
   panel.channel.dataset["live"] = String(holdsFloor);
   panel.floor.setAttribute("aria-pressed", String(holdsFloor));
-  panel.floorLabel.textContent = holdsFloor ? "Listening…" : "Hold to speak";
+  panel.floorLabel.textContent = holdsFloor ? "Listening… tap to stop" : "Tap to speak";
   panel.badge.hidden = !(holdsFloor && state.phase === "listening");
   panel.lang.disabled = state.floor !== null;
 }
@@ -208,63 +208,23 @@ async function takeFloor(id: ParticipantId): Promise<void> {
 }
 
 /**
- * Press-and-hold to talk, which is what the label promises.
+ * Click to start talking, click again to stop.
  *
- * A pure hold gesture would fail anyone who cannot sustain a press, so the keyboard path
- * (1 / 2 to latch, Esc to release) stays as an equal alternative rather than a fallback.
- * `heldBy` distinguishes the two so releasing the pointer never cancels a latched turn.
+ * A toggle rather than a press-and-hold: holding a button for the length of a sentence is
+ * tiring, impossible for some users, and makes the mouse unavailable for anything else.
+ * Clicking the party who already holds the microphone releases it, so the same control
+ * both starts and stops — there is never a state you cannot leave from the same button.
  */
-let heldBy: ParticipantId | null = null;
-
-function bindHoldToTalk(id: ParticipantId, button: HTMLButtonElement): void {
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    // Keep receiving events even if the finger slides off the button.
-    button.setPointerCapture(event.pointerId);
-    heldBy = id;
-    void takeFloor(id);
-  });
-
-  const release = (event: PointerEvent): void => {
-    if (heldBy !== id) return;
-    heldBy = null;
-    if (button.hasPointerCapture(event.pointerId)) {
-      button.releasePointerCapture(event.pointerId);
-    }
+function toggleFloor(id: ParticipantId): void {
+  if (conversation.getState().floor === id) {
     void conversation.releaseFloor();
-  };
-
-  button.addEventListener("pointerup", release);
-  button.addEventListener("pointercancel", release);
-
-  // Space and Enter activate a button by default; make them hold rather than toggle so the
-  // keyboard behaves like the label says, while 1 / 2 remain the latching alternative.
-  button.addEventListener("keydown", (event) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    if (event.repeat) return;
-    event.preventDefault();
-    heldBy = id;
-    void takeFloor(id);
-  });
-
-  button.addEventListener("keyup", (event) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    if (heldBy !== id) return;
-    heldBy = null;
-    void conversation.releaseFloor();
-  });
-
-  // A press interrupted by the tab losing focus must not leave the microphone open.
-  button.addEventListener("blur", () => {
-    if (heldBy !== id) return;
-    heldBy = null;
-    void conversation.releaseFloor();
-  });
+    return;
+  }
+  void takeFloor(id);
 }
 
-bindHoldToTalk("a", ui.a.floor);
-bindHoldToTalk("b", ui.b.floor);
-
+ui.a.floor.addEventListener("click", () => toggleFloor("a"));
+ui.b.floor.addEventListener("click", () => toggleFloor("b"));
 ui.release.addEventListener("click", () => void conversation.releaseFloor());
 
 // Changing a language rebuilds the conversation: the recognizers are configured per
@@ -280,24 +240,19 @@ for (const select of [ui.a.lang, ui.b.lang]) {
 
 document.addEventListener("keydown", (event) => {
   if (event.target instanceof HTMLSelectElement) return;
-  // Space/Enter are handled by the buttons themselves as a hold gesture.
+  // Space/Enter already activate a focused button; leave them to the browser.
   if (event.target instanceof HTMLButtonElement && (event.key === " " || event.key === "Enter")) {
     return;
   }
   if (event.repeat) return;
-  // 1 and 2 latch the microphone on, for anyone who cannot hold a press.
-  if (event.key === "1") void takeFloor("a");
-  if (event.key === "2") void takeFloor("b");
-  if (event.key === "Escape") {
-    heldBy = null;
-    void conversation.releaseFloor();
-  }
+  if (event.key === "1") toggleFloor("a");
+  if (event.key === "2") toggleFloor("b");
+  if (event.key === "Escape") void conversation.releaseFloor();
 });
 
-// Releasing on tab-switch: a hidden tab holding an open microphone is a surprise.
+// A background tab with an open microphone is a surprise nobody wants.
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && heldBy !== null) {
-    heldBy = null;
+  if (document.visibilityState === "hidden" && conversation.getState().floor !== null) {
     void conversation.releaseFloor();
   }
 });
