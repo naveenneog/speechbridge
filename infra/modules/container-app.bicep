@@ -24,7 +24,15 @@ param speechEndpoint string
 param speechRegion string
 param applicationInsightsConnectionString string
 
-@description('Container image to run. Defaults to a placeholder; azd replaces it on deploy.')
+@description('''
+Container image to run.
+
+Bound by azd to SERVICE_WEB_IMAGE_NAME, which azd sets after each deploy. That binding is
+load-bearing: without it, running `azd provision` on an already-deployed app resets the image
+back to the placeholder below, creating a new revision that fails to activate. Because ingress
+routes 100% of traffic to `latestRevision`, the failed revision then takes the traffic and the
+site degrades — which presents as sudden latency rather than an obvious error.
+''')
 param imageName string = ''
 
 @description('Microsoft Entra application (client) ID protecting the site. Configured by the postprovision hook.')

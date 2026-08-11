@@ -6,6 +6,11 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Fixed
+- **`azd provision` no longer breaks a running deployment.** The image parameter was not bound
+  to azd's recorded image, so re-provisioning reset the container to a placeholder, created a
+  revision that failed to activate, and — because ingress sends 100% of traffic to the latest
+  revision — handed all traffic to the broken one. It presented as sudden latency rather than
+  an outage, which made it hard to spot. The image is now bound to `SERVICE_WEB_IMAGE_NAME`.
 - **The deployed app can now actually reach Azure Speech.** It was granted *Cognitive Services
   Speech User*, whose permissions all sit beneath `accounts/SpeechServices/…` and do not cover
   the `/sts/v1.0/issueToken` endpoint the token broker calls — so every deployment failed with

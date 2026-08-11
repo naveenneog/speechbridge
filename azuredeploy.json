@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "7521075659274906223"
+      "templateHash": "355367955335906660"
     }
   },
   "parameters": {
@@ -52,6 +52,13 @@
       "maxValue": 1,
       "metadata": {
         "description": "Keep a warm instance (1) or scale to zero when idle (0). Zero costs less; the first request after idle pays a cold start."
+      }
+    },
+    "webImageName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container image already deployed by azd. Bound to SERVICE_WEB_IMAGE_NAME so re-provisioning keeps the running image instead of reverting it to the placeholder."
       }
     },
     "authClientId": {
@@ -592,6 +599,9 @@
           },
           "minReplicas": {
             "value": "[parameters('minReplicas')]"
+          },
+          "imageName": {
+            "value": "[parameters('webImageName')]"
           }
         },
         "template": {
@@ -601,7 +611,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "1769819477334009999"
+              "templateHash": "5898120411988887444"
             }
           },
           "parameters": {
@@ -655,7 +665,7 @@
               "type": "string",
               "defaultValue": "",
               "metadata": {
-                "description": "Container image to run. Defaults to a placeholder; azd replaces it on deploy."
+                "description": "Container image to run.\n\nBound by azd to SERVICE_WEB_IMAGE_NAME, which azd sets after each deploy. That binding is\nload-bearing: without it, running `azd provision` on an already-deployed app resets the image\nback to the placeholder below, creating a new revision that fails to activate. Because ingress\nroutes 100% of traffic to `latestRevision`, the failed revision then takes the traffic and the\nsite degrades — which presents as sudden latency rather than an obvious error.\n"
               }
             },
             "authClientId": {

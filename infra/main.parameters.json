@@ -14,6 +14,9 @@
     "minReplicas": {
       "value": "${MIN_REPLICAS=1}"
     },
+    "webImageName": {
+      "value": "${SERVICE_WEB_IMAGE_NAME=}"
+    },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID=}"
     }

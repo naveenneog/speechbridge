@@ -40,6 +40,9 @@ param principalId string = ''
 @maxValue(1)
 param minReplicas int = 1
 
+@description('Container image already deployed by azd. Bound to SERVICE_WEB_IMAGE_NAME so re-provisioning keeps the running image instead of reverting it to the placeholder.')
+param webImageName string = ''
+
 @description('Existing Microsoft Entra application (client) ID used to protect the site. Leave empty and the postprovision hook creates one.')
 param authClientId string = ''
 
@@ -130,6 +133,7 @@ module web './modules/container-app.bicep' = {
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     authClientId: authClientId
     minReplicas: minReplicas
+    imageName: webImageName
   }
 }
 
