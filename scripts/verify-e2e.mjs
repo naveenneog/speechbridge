@@ -65,7 +65,9 @@ async function runDirection(direction) {
     await page.waitForSelector('#status[data-state="ready"]', { timeout: 20000 });
     await page.selectOption("#lang-a", "en");
     await page.selectOption("#lang-b", "hi");
-    await page.click(`#floor-${direction.speaker}`);
+    // The buttons are now press-and-hold, so a click would open and immediately close the
+    // microphone. Use the keyboard latch (1 / 2), which is the accessible equivalent.
+    await page.keyboard.press(direction.speaker === "a" ? "1" : "2");
 
     await page.waitForSelector(".turn", { timeout: 45000 });
     await page.waitForTimeout(2500);

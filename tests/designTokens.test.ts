@@ -130,9 +130,28 @@ describe("stylesheet discipline", () => {
     expect(css).not.toMatch(/background-clip:\s*text/);
   });
 
-  it("keeps the pressed floor button amber on hover", () => {
+  it("keeps the pressed talk button amber on hover", () => {
     // Hover is more specific than [aria-pressed], so without an explicit rule the "who
     // holds the floor" signal vanishes under the pointer.
-    expect(css).toMatch(/\.btn--primary\[aria-pressed="true"\]:hover/);
+    expect(css).toMatch(/\.btn--talk\[aria-pressed="true"\]:hover/);
+  });
+
+  it("disables text selection on the hold-to-talk button", () => {
+    // Press-and-hold otherwise selects the label and, on iOS, opens the callout menu.
+    expect(css).toMatch(/\.btn--talk[\s\S]*?user-select:\s*none/);
+  });
+
+  it("stacks the two panels on narrow screens", () => {
+    expect(css).toMatch(/@media \(max-width: 780px\)[\s\S]*?grid-template-columns:\s*1fr/);
+  });
+
+  it("gives the talk control a thumb-sized target on phones", () => {
+    const mobile = /@media \(max-width: 640px\)([\s\S]*?)\n}/.exec(css)?.[1] ?? "";
+    expect(mobile).toMatch(/\.btn--talk[\s\S]*?min-height:\s*(6[4-9]|[7-9]\d)px/);
+  });
+
+  it("replaces the live pulse under reduced motion rather than dropping the signal", () => {
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/\.btn--talk\[aria-pressed="true"\] \.btn__mic[\s\S]*?opacity/);
   });
 });

@@ -21,3 +21,4 @@ e2e-*.png
 
 # azd
 .azure/
+ui-*.png

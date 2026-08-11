@@ -17,8 +17,8 @@
         <div>
           <h1>SpeechBridge</h1>
           <p>
-            Speak in your language; the other person hears it in theirs. Hold the floor while
-            you talk, then hand it over.
+            Press and hold to speak. The other person hears you in their language, about half
+            a second later.
           </p>
         </div>
         <div class="status" id="status" data-state="connecting" role="status">
@@ -54,11 +54,17 @@
           <div class="floor">
             <button
               type="button"
-              class="btn btn--primary floor__grow"
+              class="btn btn--talk"
               id="floor-a"
               aria-pressed="false"
+              aria-describedby="talk-help"
             >
-              <span id="floor-a-label">Hold the floor</span>
+              <svg class="btn__mic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z" />
+                <path d="M5 11v1a7 7 0 0 0 14 0v-1" />
+                <path d="M12 19v3" />
+              </svg>
+              <span class="btn__label" id="floor-a-label">Hold to speak</span>
               <kbd class="btn__key">1</kbd>
             </button>
           </div>
@@ -77,22 +83,35 @@
 
           <div class="caption">
             <p class="caption__text" id="caption-b" aria-live="polite" aria-atomic="true"></p>
-            <p class="caption__hint" id="hint-b">The translation appears here and is spoken aloud.</p>
+            <p class="caption__hint" id="hint-b">
+              The translation appears here and is spoken aloud.
+            </p>
           </div>
 
           <div class="floor">
             <button
               type="button"
-              class="btn btn--primary floor__grow"
+              class="btn btn--talk"
               id="floor-b"
               aria-pressed="false"
+              aria-describedby="talk-help"
             >
-              <span id="floor-b-label">Hold the floor</span>
+              <svg class="btn__mic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3Z" />
+                <path d="M5 11v1a7 7 0 0 0 14 0v-1" />
+                <path d="M12 19v3" />
+              </svg>
+              <span class="btn__label" id="floor-b-label">Hold to speak</span>
               <kbd class="btn__key">2</kbd>
             </button>
           </div>
         </section>
       </main>
+
+      <p class="talk-help" id="talk-help">
+        Press and hold to talk, or press <kbd>1</kbd> / <kbd>2</kbd> to keep the microphone on
+        until you press <kbd>Esc</kbd>.
+      </p>
 
       <section class="transcript" aria-labelledby="transcript-heading">
         <div class="transcript__head">
@@ -103,12 +122,12 @@
             <span aria-hidden="true">·</span> heard
           </p>
           <button type="button" class="btn" id="release" disabled>
-            Release the floor
+            Release
             <kbd class="btn__key">Esc</kbd>
           </button>
         </div>
         <p class="empty" id="transcript-empty">
-          Nothing said yet. Choose both languages, hold the floor, and start talking.
+          Nothing said yet. Pick a language for each side, then hold a microphone button and talk.
         </p>
         <ul class="transcript__list" id="transcript" aria-live="polite"></ul>
       </section>
@@ -117,4 +136,5 @@
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
+
 

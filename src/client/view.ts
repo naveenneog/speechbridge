@@ -49,7 +49,7 @@ export function formatLatency(latency: LatencySnapshot): string {
 }
 
 const PHASE_LABELS: Record<ConversationPhase, string> = {
-  idle: "Ready — nobody is holding the floor",
+  idle: "Ready — hold a microphone button to talk",
   listening: "Listening",
   translating: "Translating",
   speaking: "Speaking the translation — microphone muted",

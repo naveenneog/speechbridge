@@ -111,6 +111,11 @@ describe("statusLabel", () => {
     expect(statusLabel("cooldown")).toMatch(/speaking|muted/i);
   });
 
+  it("tells an idle user what to actually do", () => {
+    // "Ready" alone leaves a first-time user staring at the screen.
+    expect(statusLabel("idle")).toMatch(/hold/i);
+  });
+
   it("never returns an empty label", () => {
     for (const phase of ["idle", "listening", "translating", "speaking", "cooldown"] as const) {
       expect(statusLabel(phase).length).toBeGreaterThan(0);

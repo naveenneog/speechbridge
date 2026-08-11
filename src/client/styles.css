@@ -331,7 +331,39 @@ select:disabled {
   cursor: not-allowed;
 }
 
-.btn--primary[aria-pressed="true"] {
+/* ── Hold-to-speak ──────────────────────────────────────────────────── */
+
+.btn--talk {
+  inline-size: 100%;
+  min-height: 60px;
+  font-size: var(--text-base);
+  /* The gesture is press-and-hold; without this, dragging off selects text
+     and long-press opens the callout menu on iOS. */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.btn__mic {
+  inline-size: 20px;
+  block-size: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex: none;
+}
+
+.btn__label {
+  /* Reserve the width of the longest state so the button does not jump when
+     the label changes mid-press. */
+  min-inline-size: 8ch;
+  text-align: start;
+}
+
+.btn--talk[aria-pressed="true"] {
   /* White-on-saturated: dark text on an amber fill reads muddy. */
   background: var(--primary);
   border-color: var(--primary);
@@ -340,10 +372,42 @@ select:disabled {
 
 /* Hover must not out-specify the pressed state — losing the amber here would erase the
    single clearest signal in the interface at the exact moment the pointer is on it. */
-.btn--primary[aria-pressed="true"]:hover:not(:disabled) {
+.btn--talk[aria-pressed="true"]:hover:not(:disabled) {
   background: color-mix(in oklab, var(--primary) 88%, var(--ink));
   border-color: var(--primary);
   color: oklch(0.15 0.03 74.6);
+}
+
+.btn--talk[aria-pressed="true"] .btn__key {
+  color: oklch(0.25 0.05 74.6);
+  border-color: oklch(0.45 0.08 74.6);
+}
+
+/* A quiet pulse while live: this is the one place motion carries state rather
+   than decoration — it says "the microphone is open right now". */
+.btn--talk[aria-pressed="true"] .btn__mic {
+  animation: mic-live 1.6s var(--ease-out) infinite;
+}
+
+@keyframes mic-live {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.talk-help {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+.talk-help kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
 }
 
 .btn__key {
@@ -353,15 +417,8 @@ select:disabled {
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 0 4px;
-}
-
-.btn--primary[aria-pressed="true"] .btn__key {
-  color: oklch(0.25 0.05 74.6);
-  border-color: oklch(0.45 0.08 74.6);
-}
-
-.floor__grow {
-  flex: 1;
+  margin-inline-start: auto;
+  flex: none;
 }
 
 /* ── Transcript ─────────────────────────────────────────────────────── */
@@ -497,17 +554,85 @@ select:disabled {
   white-space: nowrap;
 }
 
+/* ── Responsive ─────────────────────────────────────────────────────── */
+
+/* Two panels need real width to stay readable; below this they stack. Driven by
+   content, not by device categories. */
+@media (max-width: 780px) {
+  .channels {
+    grid-template-columns: 1fr;
+  }
+
+  .caption {
+    min-height: 96px;
+  }
+
+  .masthead {
+    align-items: flex-start;
+  }
+}
+
 @media (max-width: 640px) {
   .app {
-    padding: var(--space-4) var(--space-3) var(--space-5);
+    padding: var(--space-4) var(--space-3)
+      max(var(--space-5), env(safe-area-inset-bottom));
+    gap: var(--space-4);
+  }
+
+  .channel {
+    padding: var(--space-4);
+    gap: var(--space-3);
   }
 
   .caption__text {
     font-size: var(--text-lg);
   }
 
+  /* Thumb-sized, because on a phone this is the only control that matters. */
+  .btn--talk {
+    min-height: 64px;
+  }
+
   .turn {
     grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .turn__latency {
+    justify-self: start;
+  }
+
+  .transcript__list {
+    max-height: 32vh;
+  }
+
+  .transcript__head {
+    gap: var(--space-2);
+  }
+
+  .talk-help {
+    font-size: var(--text-xs);
+  }
+}
+
+/* Landscape phones and short windows: the captions matter more than the chrome. */
+@media (max-height: 560px) and (min-width: 640px) {
+  .app {
+    padding-block: var(--space-3);
+    gap: var(--space-3);
+  }
+
+  .masthead p,
+  .talk-help {
+    display: none;
+  }
+
+  .caption {
+    min-height: 72px;
+  }
+
+  .transcript__list {
+    max-height: 22vh;
   }
 }
 
@@ -522,5 +647,11 @@ select:disabled {
 
   .btn:active:not(:disabled) {
     transform: none;
+  }
+
+  /* The live pulse conveys state, so replace it rather than remove it. */
+  .btn--talk[aria-pressed="true"] .btn__mic {
+    animation: none;
+    opacity: 0.85;
   }
 }
