@@ -28,7 +28,7 @@ not a detail.
 
 The Azure AI Services account is provisioned with `disableLocalAuth: true`, so keys cannot be
 issued even by an administrator. The web app authenticates using a **user-assigned managed
-identity** holding the *Cognitive Services Speech User* role. There is no secret in the
+identity** holding the *Cognitive Services User* role. There is no secret in the
 repository, in app settings, in deployment outputs, or in your `.env`.
 
 The browser never receives a durable credential either. It gets a **Speech-scoped token that
@@ -141,7 +141,7 @@ azd up
 ```
 
 `azd up` asks for an environment name and region, then provisions the AI Services account
-with a custom subdomain, a managed identity with the Speech User role, the container registry, Container Apps environment and app, and Log Analytics — then deploys the app, creates the Microsoft Entra app
+with a custom subdomain, a managed identity with the Cognitive Services User role, the container registry, Container Apps environment and app, and Log Analytics — then deploys the app, creates the Microsoft Entra app
 registration and switches on sign-in. It prints your URL when it finishes.
 
 **Regions:** choose one that supports Azure AI Speech. The template restricts the parameter
@@ -277,5 +277,6 @@ This project may contain trademarks or logos for projects, products, or services
 use of Microsoft trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general).
 Use of third-party trademarks or logos is subject to those third parties' policies.
+
 
 

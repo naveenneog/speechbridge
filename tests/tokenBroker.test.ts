@@ -19,6 +19,8 @@ function makeBroker(
     getEntraToken: overrides.entra ?? (async () => "entra-token"),
     fetchImpl,
     now: overrides.now ?? (() => clock.value),
+    delay: async () => undefined,
+    log: () => undefined,
   });
   return { broker, fetchImpl, clock };
 }
@@ -120,10 +122,72 @@ describe("token broker", () => {
 
   it("reports the status when the exchange is rejected", async () => {
     const fetchImpl = vi.fn(
-      async () => new Response("nope", { status: 401, statusText: "Unauthorized" }),
+      async () => new Response("nope", { status: 500, statusText: "Server Error" }),
     ) as unknown as typeof fetch;
     const { broker } = makeBroker({ fetchImpl });
-    await expect(broker.getToken()).rejects.toThrow(/401/);
+    await expect(broker.getToken()).rejects.toThrow(/500/);
+  });
+
+  describe("role-assignment propagation", () => {
+    it("retries a 401, because data-plane RBAC lags resource creation by minutes", async () => {
+      // The classic first-deploy failure: the role is assigned during provisioning and the
+      // app starts immediately, before Azure has propagated it. Failing outright makes a
+      // correct deployment look broken.
+      let call = 0;
+      const fetchImpl = vi.fn(async () => {
+        call += 1;
+        return call < 3
+          ? new Response("", { status: 401 })
+          : new Response("token-after-propagation", { status: 200 });
+      }) as unknown as typeof fetch;
+
+      const { broker } = makeBroker({ fetchImpl });
+      const result = await broker.getToken();
+      expect(result.token).toBe("token-after-propagation");
+      expect(call).toBe(3);
+    });
+
+    it("retries a 403 for the same reason", async () => {
+      let call = 0;
+      const fetchImpl = vi.fn(async () => {
+        call += 1;
+        return call < 2 ? new Response("", { status: 403 }) : new Response("ok", { status: 200 });
+      }) as unknown as typeof fetch;
+      const { broker } = makeBroker({ fetchImpl });
+      expect((await broker.getToken()).token).toBe("ok");
+    });
+
+    it("gives up after the configured attempts rather than retrying forever", async () => {
+      const fetchImpl = vi.fn(
+        async () => new Response("", { status: 401 }),
+      ) as unknown as typeof fetch;
+      const { broker } = makeBroker({ fetchImpl });
+      await expect(broker.getToken()).rejects.toThrow(/401/);
+      // Initial attempt plus the retries, and no more.
+      expect((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(4);
+    });
+
+    it("names propagation in the error, so a fresh deployment is not misdiagnosed", async () => {
+      const fetchImpl = vi.fn(
+        async () => new Response("", { status: 401 }),
+      ) as unknown as typeof fetch;
+      const { broker } = makeBroker({ fetchImpl });
+      const error = await broker.getToken().then(
+        () => undefined,
+        (e: Error) => e,
+      );
+      expect(error?.message).toMatch(/minutes|propagat/i);
+    });
+
+    it("does not retry a failure that waiting cannot fix", async () => {
+      // A 404 means the endpoint is wrong. Retrying just delays the real error.
+      const fetchImpl = vi.fn(
+        async () => new Response("", { status: 404 }),
+      ) as unknown as typeof fetch;
+      const { broker } = makeBroker({ fetchImpl });
+      await expect(broker.getToken()).rejects.toThrow(/404/);
+      expect((fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+    });
   });
 
   it("never leaks the Entra token in an error message", async () => {
@@ -188,3 +252,4 @@ describe("token broker", () => {
     expect((await broker.getToken()).token).toBe("sts-token-1");
   });
 });
+

@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-10
+- **Corrected by:** [ADR-0012](0012-cognitive-services-user-role.md) — this ADR names *Cognitive Services Speech User*, which is **wrong** for the STS token-exchange path. The correct role is *Cognitive Services User*. CORRECTED BY ADR-0012.
 
 ## Context
 
@@ -60,4 +61,5 @@ If `az cognitiveservices account keys list` starts succeeding on a new resource,
 lifted and the key path becomes available — but we would still not take it, because the Entra path
 is strictly better. The decision only becomes wrong if Entra auth fails in a deployment target that
 cannot obtain a managed identity.
+
 

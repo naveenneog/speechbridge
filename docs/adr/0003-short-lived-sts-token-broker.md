@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-08-10
+- **Corrected by:** [ADR-0012](0012-cognitive-services-user-role.md) — this ADR names *Cognitive Services Speech User*, which is **wrong** for the STS token-exchange path. The correct role is *Cognitive Services User*. CORRECTED BY ADR-0012.
 
 ## Context
 
@@ -58,3 +59,4 @@ The broker caches the token and refreshes at 80% of its 10-minute life.
 If the STS exchange begins returning 401 for a principal that still holds the Speech User role, the
 `aad#{resourceId}#{token}` form remains a working fallback and is already proven. Swapping to it is
 a change to one function in `tokenBroker.ts`.
+

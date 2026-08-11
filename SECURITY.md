@@ -20,7 +20,7 @@ Worth stating plainly, because it shapes what you should and should not change:
 **There are no API keys, anywhere.** The Azure AI Services account is provisioned with
 `disableLocalAuth: true`, so keys cannot be issued even by an administrator. The web app
 authenticates with a **user-assigned managed identity** holding the *Cognitive Services
-Speech User* role. Nothing secret is stored in configuration, in the repository, or in the
+Cognitive Services User* role. Nothing secret is stored in configuration, in the repository, or in the
 deployment outputs.
 
 **The browser never receives a durable credential.** It gets a Speech-scoped token that
@@ -49,3 +49,4 @@ Be aware of these before using it for anything beyond a demo:
 - **No audio or transcripts are stored** by this application — but the Azure services it calls
   have their own data-handling behaviour. See
   [`docs/RESPONSIBLE_AI.md`](docs/RESPONSIBLE_AI.md).
+

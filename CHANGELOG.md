@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 
 ## [Unreleased]
 
+### Fixed
+- **The deployed app can now actually reach Azure Speech.** It was granted *Cognitive Services
+  Speech User*, whose permissions all sit beneath `accounts/SpeechServices/…` and do not cover
+  the `/sts/v1.0/issueToken` endpoint the token broker calls — so every deployment failed with
+  `PermissionDenied` despite the role being correctly assigned. It now grants *Cognitive
+  Services User*. This never showed up locally because a developer signed in as subscription
+  Owner inherits the missing permission. (ADR-0012)
+- Token exchange failures now log Azure's actual reason for the operator, and retry
+  authorization errors a few times, because data-plane role assignments can take minutes to
+  take effect on a fresh deployment.
+
 ### Added
 - **One-command deployment to Azure.** `azd up` provisions the AI Services account (keyless,
   custom subdomain), a managed identity with the Speech User role, App Service, and

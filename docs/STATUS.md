@@ -95,9 +95,10 @@ The Azure resource is real and already provisioned:
 
 - Resource group `<your-resource-group>`, account `<your-resource-name>`, region `eastus2`,
   kind `AIServices`, SKU `S0`, custom subdomain `<your-resource-name>`
-- The signed-in principal holds **Cognitive Services Speech User** on it
+- The signed-in principal holds **Cognitive Services User** on it
 - There are **no keys** and there cannot be (ADR-0002) — authenticate with `az login`
 
 The server binds to **127.0.0.1** deliberately. Setting `HOST` widens it and prints a warning;
 do not do that without first adding authentication to `/api/speech-token`.
+
 
