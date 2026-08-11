@@ -10,8 +10,20 @@
 
 $ErrorActionPreference = 'Continue'
 
-$clientId = (azd env get-value AUTH_CLIENT_ID 2>$null)
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($clientId)) {
+# Not 'Stop': azd writes advisory notices to stderr, which PowerShell would otherwise
+# promote to a terminating error and skip the cleanup entirely.
+$clientId = $null
+try {
+    $raw = & azd env get-values 2>$null
+    foreach ($line in @($raw)) {
+        if ($line -match '^\s*AUTH_CLIENT_ID\s*=\s*"?([^"]*)"?\s*$') { $clientId = $Matches[1] }
+    }
+}
+catch {
+    Write-Warning "Could not read the azd environment: $_"
+}
+
+if ([string]::IsNullOrWhiteSpace($clientId)) {
     Write-Host 'predown: no app registration recorded for this environment.'
     exit 0
 }

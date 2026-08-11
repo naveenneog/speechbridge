@@ -68,14 +68,14 @@ else
   az ad app update --id "$CLIENT_ID" --web-redirect-uris "$REDIRECT_URI" >/dev/null 2>&1 || true
 fi
 
-# Configure built-in authentication through ARM directly. `az webapp auth microsoft` lives
-# in a preview extension that may not be installed, so this uses core CLI only.
+# Configure built-in authentication through ARM directly. `az containerapp auth` lives in an
+# extension that may not be installed, so this uses core CLI only.
 BODY_FILE=$(mktemp)
 cat > "$BODY_FILE" <<JSON
 {
   "properties": {
+    "platform": { "enabled": true },
     "globalValidation": {
-      "requireAuthentication": true,
       "unauthenticatedClientAction": "RedirectToLoginPage",
       "redirectToProvider": "azureactivedirectory"
     },
@@ -91,13 +91,12 @@ cat > "$BODY_FILE" <<JSON
         }
       }
     },
-    "login": { "tokenStore": { "enabled": true } },
-    "platform": { "enabled": true, "runtimeVersion": "~1" }
+    "login": { "preserveUrlFragmentsForLogins": false }
   }
 }
 JSON
 
-URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Web/sites/${SITE_NAME}/config/authsettingsV2?api-version=2024-04-01"
+URI="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.App/containerApps/${SITE_NAME}/authConfigs/current?api-version=2024-03-01"
 
 if az rest --method put --uri "$URI" --body "@${BODY_FILE}" --headers "Content-Type=application/json" >/dev/null; then
   echo "  built-in authentication enabled"
@@ -111,3 +110,4 @@ else
 fi
 
 rm -f "$BODY_FILE"
+

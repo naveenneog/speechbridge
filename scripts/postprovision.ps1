@@ -12,12 +12,34 @@
     mint Speech credentials for an unauthenticated caller. It fails closed, not open.
 #>
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
+
+<#
+    Reads azd environment values in one call.
+
+    Deliberately not using `$ErrorActionPreference = 'Stop'` around native commands: azd
+    writes advisory notices (for example "your version of azd is out of date") to stderr,
+    and under Stop, PowerShell promotes native stderr output to a terminating error. That
+    killed this hook on its first line for anyone whose azd was not the newest build,
+    silently skipping authentication setup.
+#>
+$azdValues = @{}
+try {
+    $raw = & azd env get-values 2>$null
+    foreach ($line in @($raw)) {
+        if ($line -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*"?([^"]*)"?\s*$') {
+            $azdValues[$Matches[1]] = $Matches[2]
+        }
+    }
+}
+catch {
+    Write-Warning "Could not read the azd environment: $_"
+}
 
 function Get-AzdEnv {
     param([string]$Name)
-    $value = (azd env get-value $Name 2>$null)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($value)) { return $null }
+    $value = $azdValues[$Name]
+    if ([string]::IsNullOrWhiteSpace($value)) { return $null }
     return $value.Trim()
 }
 
@@ -81,12 +103,12 @@ else {
     az ad app update --id $clientId --web-redirect-uris $redirectUri 2>$null | Out-Null
 }
 
-# Configure built-in authentication through ARM directly. `az webapp auth microsoft` lives
-# in a preview extension that may not be installed, so this uses core CLI only.
+# Configure built-in authentication through ARM directly. `az containerapp auth` lives in an
+# extension that may not be installed, so this uses core CLI only.
 $authSettings = @{
     properties = @{
+        platform          = @{ enabled = $true }
         globalValidation  = @{
-            requireAuthentication       = $true
             unauthenticatedClientAction = 'RedirectToLoginPage'
             redirectToProvider          = 'azureactivedirectory'
         }
@@ -102,29 +124,31 @@ $authSettings = @{
                 }
             }
         }
-        login             = @{ tokenStore = @{ enabled = $true } }
-        platform          = @{ enabled = $true; runtimeVersion = '~1' }
+        login             = @{ preserveUrlFragmentsForLogins = $false }
     }
 }
 
 $bodyFile = Join-Path ([System.IO.Path]::GetTempPath()) "speechbridge-auth-$([guid]::NewGuid()).json"
 $authSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $bodyFile -Encoding utf8
 
-try {
-    $uri = "https://management.azure.com/subscriptions/$subscriptionId/resourceGroups/$resourceGroup" +
-           "/providers/Microsoft.Web/sites/$siteName/config/authsettingsV2?api-version=2024-04-01"
+$uri = "https://management.azure.com/subscriptions/$subscriptionId/resourceGroups/$resourceGroup" +
+       "/providers/Microsoft.App/containerApps/$siteName/authConfigs/current?api-version=2024-03-01"
 
-    az rest --method put --uri $uri --body "@$bodyFile" --headers "Content-Type=application/json" | Out-Null
+& az rest --method put --uri $uri --body "@$bodyFile" --headers "Content-Type=application/json" 2>&1 | Out-Null
+$authExit = $LASTEXITCODE
+Remove-Item $bodyFile -ErrorAction SilentlyContinue
+
+# Check the exit code, not just exceptions: `az` reports failures on stderr without
+# throwing, so trusting a try/catch here would print success over a failed call.
+if ($authExit -eq 0) {
     Write-Host '  built-in authentication enabled'
     Write-Host ''
     Write-Host "SpeechBridge is ready: $siteUri"
     Write-Host 'Only signed-in users from your Microsoft Entra tenant can open it.'
     Write-Host ''
 }
-catch {
-    Write-Warning "Could not enable built-in authentication: $_"
-    Write-Warning 'The site stays fail-closed and will not mint credentials until this succeeds.'
-}
-finally {
-    Remove-Item $bodyFile -ErrorAction SilentlyContinue
+else {
+    Write-Warning 'Could not enable built-in authentication.'
+    Write-Warning 'The site stays fail-closed: it will not mint Speech credentials until this succeeds.'
+    Write-Warning "Retry with:  pwsh ./scripts/postprovision.ps1"
 }
