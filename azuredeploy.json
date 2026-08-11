@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.44.1.10279",
-      "templateHash": "355367955335906660"
+      "version": "0.46.1.21595",
+      "templateHash": "16658013052385835833"
     }
   },
   "parameters": {
@@ -67,6 +67,20 @@
       "metadata": {
         "description": "Existing Microsoft Entra application (client) ID used to protect the site. Leave empty and the postprovision hook creates one."
       }
+    },
+    "allowedTenantIds": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Microsoft Entra tenants allowed to sign in, comma-separated.\n\nLeave empty for the normal case. A single-tenant app registration is already limited by Entra\nto this tenant and its invited guests, so an allowlist adds nothing there.\n\nIt matters only alongside `multiTenantSignIn`: a multi-tenant registration lets *every* Entra\norganisation reach the sign-in page, and this list is what narrows that back down. The app\nenforces it by checking the tenant claim, so it holds even if the platform config drifts.\n"
+      }
+    },
+    "multiTenantSignIn": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Allow users from other Microsoft Entra organisations to sign in.\n\nOff by default, and note that many tenants forbid it outright: an application management\npolicy can reject `AzureADMultipleOrgs`, in which case provisioning still succeeds but the\nregistration stays single-tenant. The supported way to admit people from another organisation\nis then to invite them as guests — see `npm run invite` and docs/adr/0013.\n"
+      }
     }
   },
   "variables": {
@@ -127,8 +141,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "9991767070865455902"
+              "version": "0.46.1.21595",
+              "templateHash": "11149075996731825674"
             }
           },
           "parameters": {
@@ -223,8 +237,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "9370313005214186096"
+              "version": "0.46.1.21595",
+              "templateHash": "214792097312051581"
             }
           },
           "parameters": {
@@ -302,8 +316,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "228374428694914826"
+              "version": "0.46.1.21595",
+              "templateHash": "13883823146149945804"
             }
           },
           "parameters": {
@@ -408,8 +422,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "4320252390897589259"
+              "version": "0.46.1.21595",
+              "templateHash": "7457367729607031120"
             }
           },
           "parameters": {
@@ -492,8 +506,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "4320252390897589259"
+              "version": "0.46.1.21595",
+              "templateHash": "7457367729607031120"
             }
           },
           "parameters": {
@@ -602,6 +616,12 @@
           },
           "imageName": {
             "value": "[parameters('webImageName')]"
+          },
+          "allowedTenantIds": {
+            "value": "[parameters('allowedTenantIds')]"
+          },
+          "multiTenantSignIn": {
+            "value": "[parameters('multiTenantSignIn')]"
           }
         },
         "template": {
@@ -610,8 +630,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.44.1.10279",
-              "templateHash": "5898120411988887444"
+              "version": "0.46.1.21595",
+              "templateHash": "17016600111464912138"
             }
           },
           "parameters": {
@@ -673,6 +693,20 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Microsoft Entra application (client) ID protecting the site. Configured by the postprovision hook."
+              }
+            },
+            "allowedTenantIds": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Comma-separated Entra tenant ids allowed to sign in. Empty means only this tenant."
+              }
+            },
+            "multiTenantSignIn": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Accept sign-ins from other Entra organisations. Off by default; many tenants forbid it by policy."
               }
             },
             "minReplicas": {
@@ -787,6 +821,10 @@
                           "value": "authenticated"
                         },
                         {
+                          "name": "ALLOWED_TENANT_IDS",
+                          "value": "[parameters('allowedTenantIds')]"
+                        },
+                        {
                           "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
                           "value": "[parameters('applicationInsightsConnectionString')]"
                         },
@@ -835,7 +873,7 @@
                     "enabled": true,
                     "registration": {
                       "clientId": "[parameters('authClientId')]",
-                      "openIdIssuer": "[format('{0}{1}/v2.0', environment().authentication.loginEndpoint, tenant().tenantId)]"
+                      "openIdIssuer": "[if(parameters('multiTenantSignIn'), format('{0}organizations/v2.0', environment().authentication.loginEndpoint), format('{0}{1}/v2.0', environment().authentication.loginEndpoint, tenant().tenantId))]"
                     },
                     "validation": {
                       "allowedAudiences": [

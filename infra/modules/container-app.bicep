@@ -38,6 +38,12 @@ param imageName string = ''
 @description('Microsoft Entra application (client) ID protecting the site. Configured by the postprovision hook.')
 param authClientId string = ''
 
+@description('Comma-separated Entra tenant ids allowed to sign in. Empty means only this tenant.')
+param allowedTenantIds string = ''
+
+@description('Accept sign-ins from other Entra organisations. Off by default; many tenants forbid it by policy.')
+param multiTenantSignIn bool = false
+
 @minValue(0)
 @description('Scale to zero when idle. 1 keeps a warm instance and avoids cold start.')
 param minReplicas int = 0
@@ -149,6 +155,12 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'authenticated'
             }
             {
+              // Enforced by the app: a multi-tenant registration lets every organisation
+              // reach the sign-in page, so this is what keeps it to the ones you named.
+              name: 'ALLOWED_TENANT_IDS'
+              value: allowedTenantIds
+            }
+            {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
             }
@@ -196,7 +208,12 @@ resource auth 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (!empty(
         enabled: true
         registration: {
           clientId: authClientId
-          openIdIssuer: '${az.environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+          // Only widen the issuer when other organisations are actually expected. Using
+          // `organizations` against a single-tenant registration works, but it is a
+          // misleading configuration to leave behind for the next reader.
+          openIdIssuer: multiTenantSignIn
+            ? '${az.environment().authentication.loginEndpoint}organizations/v2.0'
+            : '${az.environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
         }
         validation: {
           allowedAudiences: [

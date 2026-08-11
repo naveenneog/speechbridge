@@ -165,6 +165,33 @@ To remove everything:
 azd down --purge
 ```
 
+### Giving other people access
+
+The site is protected by Microsoft Entra sign-in, and the app registration is single-tenant —
+so by default only accounts in *your* tenant can open it. Someone from another organisation
+sees "account does not exist in tenant … and needs to be added as an external user first".
+
+Invite them as guests:
+
+```bash
+npm run invite -- alice@contoso.com bob@contoso.com
+npm run invite -- --file people.txt        # one address per line
+npm run invite -- --notify alice@contoso.com   # also send the Entra invitation email
+```
+
+They then sign in with their own work account and their own MFA. You need permission to invite
+guests (Guest Inviter, User Administrator or Global Administrator); the script says so if the
+call is refused.
+
+> **Why not just make the app multi-tenant?** Because it is both broader than the requirement
+> and frequently prohibited. Multi-tenant means every Entra organisation can reach the sign-in
+> page, and many tenants — including the one this was built in — block
+> `AzureADMultipleOrgs` outright by application-management policy. If your tenant does allow
+> it, set `azd env set MULTI_TENANT_SIGN_IN true` and list the organisations you actually want
+> in `ALLOWED_TENANT_IDS`; the app enforces that list itself, so widening without narrowing is
+> not possible by accident. See
+> [ADR-0013](docs/adr/0013-guest-access-not-multi-tenant.md).
+
 ### Run it locally
 
 ```bash

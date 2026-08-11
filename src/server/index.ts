@@ -36,6 +36,7 @@ const app = createApp({
   broker,
   port: config.port,
   accessMode: config.accessMode,
+  allowedTenants: config.allowedTenants,
   // Vite serves the client on its own origin in development.
   allowedOrigins: ["http://localhost:5173", "http://127.0.0.1:5173"],
   ...(existsSync(clientDir) ? { clientDir } : {}),
@@ -47,6 +48,9 @@ const server = app.listen(config.port, config.host, () => {
   console.log(`  region   : ${config.region}`);
   console.log(`  auth     : Microsoft Entra ID (no keys — see docs/adr/0002)`);
   console.log(`  access   : ${config.accessMode}`);
+  console.log(
+    `  tenants  : ${config.allowedTenants.length > 0 ? config.allowedTenants.join(", ") : "any (no restriction)"}`,
+  );
   if (config.host !== "127.0.0.1" && config.accessMode === "local") {
     console.warn(
       `  WARNING  : bound to ${config.host} in local access mode, so anything that can ` +

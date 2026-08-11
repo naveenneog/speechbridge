@@ -19,6 +19,14 @@
     },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID=}"
+    },
+    "allowedTenantIds": {
+      "value": "${ALLOWED_TENANT_IDS=}"
+    },
+    "multiTenantSignIn": {
+      "value": "${MULTI_TENANT_SIGN_IN=false}"
     }
   }
 }
+
+

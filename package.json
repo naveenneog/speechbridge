@@ -25,6 +25,7 @@
     "verify:voices": "tsx scripts/verify-voices.ts",
     "verify:browser": "node scripts/browser-check.mjs",
     "verify:responsive": "node scripts/verify-responsive.mjs",
+    "invite": "pwsh -NoProfile -File scripts/invite-users.ps1",
     "fixture:speech": "node scripts/make-fixture.mjs",
     "verify:e2e": "node scripts/verify-e2e.mjs",
     "bench:synthesis": "node scripts/bench-synthesis.mjs"
@@ -48,6 +49,7 @@
     "vitest": "4.1.10"
   }
 }
+
 
 
 

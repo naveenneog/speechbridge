@@ -46,6 +46,28 @@ param webImageName string = ''
 @description('Existing Microsoft Entra application (client) ID used to protect the site. Leave empty and the postprovision hook creates one.')
 param authClientId string = ''
 
+@description('''
+Microsoft Entra tenants allowed to sign in, comma-separated.
+
+Leave empty for the normal case. A single-tenant app registration is already limited by Entra
+to this tenant and its invited guests, so an allowlist adds nothing there.
+
+It matters only alongside `multiTenantSignIn`: a multi-tenant registration lets *every* Entra
+organisation reach the sign-in page, and this list is what narrows that back down. The app
+enforces it by checking the tenant claim, so it holds even if the platform config drifts.
+''')
+param allowedTenantIds string = ''
+
+@description('''
+Allow users from other Microsoft Entra organisations to sign in.
+
+Off by default, and note that many tenants forbid it outright: an application management
+policy can reject `AzureADMultipleOrgs`, in which case provisioning still succeeds but the
+registration stays single-tenant. The supported way to admit people from another organisation
+is then to invite them as guests — see `npm run invite` and docs/adr/0013.
+''')
+param multiTenantSignIn bool = false
+
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
 var tags = {
@@ -134,6 +156,8 @@ module web './modules/container-app.bicep' = {
     authClientId: authClientId
     minReplicas: minReplicas
     imageName: webImageName
+    allowedTenantIds: allowedTenantIds
+    multiTenantSignIn: multiTenantSignIn
   }
 }
 

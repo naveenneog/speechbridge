@@ -77,12 +77,48 @@ export interface AccessRequest {
   readonly port: number;
   /** From `X-MS-CLIENT-PRINCIPAL-ID`. Only trusted in `authenticated` mode. */
   readonly principalId?: string | undefined;
+  /** Entra tenant the signed-in user belongs to, from the claims header. */
+  readonly tenantId?: string | undefined;
+  /**
+   * Tenants permitted to use this deployment. Empty means "do not restrict by tenant",
+   * which is correct for a single-tenant app registration because Entra already limits
+   * sign-in to one organisation. It is **not** safe for a multi-tenant registration.
+   */
+  readonly allowedTenants?: readonly string[];
   readonly allowedOrigins?: readonly string[];
 }
 
 export interface AccessVerdict {
   readonly allowed: boolean;
   readonly reason?: string;
+}
+
+/** Claim types Easy Auth may use for the tenant, depending on provider and version. */
+const TENANT_CLAIM_TYPES = new Set([
+  "tid",
+  "http://schemas.microsoft.com/identity/claims/tenantid",
+]);
+
+/**
+ * Reads the Entra tenant out of the `X-MS-CLIENT-PRINCIPAL` header.
+ *
+ * The platform validates the token and injects this base64 JSON blob, stripping any
+ * client-supplied copy at the front door — so the claims inside can be trusted, but only
+ * because the request arrived through the platform's authentication layer.
+ */
+export function tenantFromPrincipalHeader(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+  try {
+    const decoded = JSON.parse(Buffer.from(header, "base64").toString("utf8")) as {
+      claims?: { typ?: string; val?: string }[];
+    };
+    if (!Array.isArray(decoded.claims)) return undefined;
+    const claim = decoded.claims.find((c) => c.typ && TENANT_CLAIM_TYPES.has(c.typ));
+    return claim?.val ?? undefined;
+  } catch {
+    // A malformed header is not evidence of anything; the caller fails closed.
+    return undefined;
+  }
 }
 
 export function isAuthorizedRequest(request: AccessRequest): AccessVerdict {
@@ -95,6 +131,23 @@ export function isAuthorizedRequest(request: AccessRequest): AccessVerdict {
         reason: "Please sign in. This deployment requires an authenticated Microsoft Entra user.",
       };
     }
+
+    // With a multi-tenant app registration, every Entra organisation can reach the sign-in
+    // page. Without this, "sign-in required" would mean "anyone with a work account".
+    const allowed = request.allowedTenants ?? [];
+    if (allowed.length > 0) {
+      const tenant = request.tenantId?.trim().toLowerCase();
+      const permitted = new Set(allowed.map((t) => t.trim().toLowerCase()));
+      if (!tenant || !permitted.has(tenant)) {
+        return {
+          allowed: false,
+          reason:
+            "Your organisation is not permitted to use this deployment. " +
+            "Sign in with an account from an approved tenant.",
+        };
+      }
+    }
+
     return { allowed: true };
   }
 

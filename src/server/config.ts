@@ -14,6 +14,8 @@ export interface ServerConfig {
   readonly host: string;
   /** How callers of the credential endpoint are authorised. */
   readonly accessMode: AccessMode;
+  /** Entra tenants permitted to use this deployment. Empty means no tenant restriction. */
+  readonly allowedTenants: readonly string[];
 }
 
 const DEFAULT_PORT = 8790;
@@ -102,6 +104,13 @@ export function loadConfig(env: Record<string, string | undefined>): ServerConfi
     }
   }
 
-  return { endpoint, region, port, host, accessMode };
+  // Comma-separated so it survives an app setting, an azd env var and a shell without
+  // quoting games. Empty is meaningful: no tenant restriction.
+  const allowedTenants = (env["ALLOWED_TENANT_IDS"] ?? "")
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  return { endpoint, region, port, host, accessMode, allowedTenants };
 }
 

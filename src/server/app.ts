@@ -1,6 +1,6 @@
 import express, { type Express, type Request, type Response } from "express";
 import { LANGUAGES } from "../shared/languages.js";
-import { isAuthorizedRequest, type AccessMode } from "./localGuard.js";
+import { isAuthorizedRequest, tenantFromPrincipalHeader, type AccessMode } from "./localGuard.js";
 import type { TokenBroker } from "./tokenBroker.js";
 
 export interface AppOptions {
@@ -13,6 +13,8 @@ export interface AppOptions {
   readonly allowedOrigins?: readonly string[];
   /** How callers are authorised. Defaults to `local`. */
   readonly accessMode?: AccessMode;
+  /** Entra tenants permitted to use this deployment. Empty means no tenant restriction. */
+  readonly allowedTenants?: readonly string[];
 }
 
 export function createApp(options: AppOptions): Express {
@@ -37,7 +39,11 @@ export function createApp(options: AppOptions): Express {
         host: req.headers.host,
         origin: req.headers.origin,
         principalId: req.headers["x-ms-client-principal-id"] as string | undefined,
+        tenantId: tenantFromPrincipalHeader(
+          req.headers["x-ms-client-principal"] as string | undefined,
+        ),
         port: options.port,
+        ...(options.allowedTenants ? { allowedTenants: options.allowedTenants } : {}),
         ...(options.allowedOrigins ? { allowedOrigins: options.allowedOrigins } : {}),
       });
       if (!verdict.allowed) {

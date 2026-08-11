@@ -50,6 +50,13 @@ $siteUri        = Get-AzdEnv 'SERVICE_WEB_URI'
 $tenantId       = Get-AzdEnv 'AZURE_TENANT_ID'
 $envName        = Get-AzdEnv 'AZURE_ENV_NAME'
 $clientId       = Get-AzdEnv 'AUTH_CLIENT_ID'
+$allowedTenants = Get-AzdEnv 'ALLOWED_TENANT_IDS'
+
+# A registration limited to one organisation cannot admit users from another, however the
+# app is configured. Multi-tenant is therefore required the moment an allowlist names a
+# second tenant — and the app's ALLOWED_TENANT_IDS is what stops that meaning "everyone".
+$multiTenant = -not [string]::IsNullOrWhiteSpace($allowedTenants)
+$signInAudience = if ($multiTenant) { 'AzureADMultipleOrgs' } else { 'AzureADMyOrg' }
 
 if (-not $siteName -or -not $resourceGroup) {
     Write-Host 'postprovision: no web app in this environment yet; nothing to configure.'
@@ -66,7 +73,7 @@ if (-not $clientId) {
     try {
         $appId = az ad app create `
             --display-name "SpeechBridge ($envName)" `
-            --sign-in-audience AzureADMyOrg `
+            --sign-in-audience $signInAudience `
             --web-redirect-uris $redirectUri `
             --enable-id-token-issuance true `
             --query appId -o tsv 2>$null
@@ -101,6 +108,9 @@ if (-not $clientId) {
 else {
     Write-Host "  using existing app registration $clientId"
     az ad app update --id $clientId --web-redirect-uris $redirectUri 2>$null | Out-Null
+    # An existing single-tenant registration will silently refuse other organisations, so
+    # keep the audience in step with the allowlist.
+    az ad app update --id $clientId --sign-in-audience $signInAudience 2>$null | Out-Null
 }
 
 # Configure built-in authentication through ARM directly. `az containerapp auth` lives in an
@@ -117,7 +127,12 @@ $authSettings = @{
                 enabled      = $true
                 registration = @{
                     clientId     = $clientId
-                    openIdIssuer = "https://login.microsoftonline.com/$tenantId/v2.0"
+                    openIdIssuer = if ($multiTenant) {
+                        'https://login.microsoftonline.com/organizations/v2.0'
+                    }
+                    else {
+                        "https://login.microsoftonline.com/$tenantId/v2.0"
+                    }
                 }
                 validation   = @{
                     allowedAudiences = @("api://$clientId")

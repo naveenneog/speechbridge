@@ -14,7 +14,37 @@ describe("server configuration", () => {
       port: 9000,
       host: "127.0.0.1",
       accessMode: "local",
+      allowedTenants: [],
     });
+  });
+
+  it("parses a comma-separated tenant allowlist", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      ALLOWED_TENANT_IDS: "16b3c013-d300-468d-ac64-7eda0820b6d3, 72f988bf-86f1-41af-91ab-2d7cd011db47",
+    });
+    expect(config.allowedTenants).toEqual([
+      "16b3c013-d300-468d-ac64-7eda0820b6d3",
+      "72f988bf-86f1-41af-91ab-2d7cd011db47",
+    ]);
+  });
+
+  it("treats an unset allowlist as no tenant restriction", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+    });
+    expect(config.allowedTenants).toEqual([]);
+  });
+
+  it("ignores blank entries in the allowlist", () => {
+    const config = loadConfig({
+      SPEECH_ENDPOINT: "https://x.cognitiveservices.azure.com",
+      SPEECH_REGION: "eastus2",
+      ALLOWED_TENANT_IDS: "a,, b ,",
+    });
+    expect(config.allowedTenants).toEqual(["a", "b"]);
   });
 
   it("defaults the port when it is not set", () => {

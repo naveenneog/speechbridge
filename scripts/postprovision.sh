@@ -22,6 +22,18 @@ SITE_URI=$(azd_env SERVICE_WEB_URI)
 TENANT_ID=$(azd_env AZURE_TENANT_ID)
 ENV_NAME=$(azd_env AZURE_ENV_NAME)
 CLIENT_ID=$(azd_env AUTH_CLIENT_ID)
+ALLOWED_TENANTS=$(azd_env ALLOWED_TENANT_IDS)
+
+# A registration limited to one organisation cannot admit users from another, however the
+# app is configured. Multi-tenant is required the moment an allowlist names a second tenant
+# — and the app's ALLOWED_TENANT_IDS is what stops that meaning "everyone".
+if [ -n "$ALLOWED_TENANTS" ]; then
+  SIGN_IN_AUDIENCE="AzureADMultipleOrgs"
+  ISSUER="https://login.microsoftonline.com/organizations/v2.0"
+else
+  SIGN_IN_AUDIENCE="AzureADMyOrg"
+  ISSUER="https://login.microsoftonline.com/${TENANT_ID}/v2.0"
+fi
 
 if [ -z "$SITE_NAME" ] || [ -z "$RESOURCE_GROUP" ]; then
   echo "postprovision: no web app in this environment yet; nothing to configure."
@@ -37,7 +49,7 @@ if [ -z "$CLIENT_ID" ]; then
   echo "  creating app registration for ${SITE_URI}"
   CLIENT_ID=$(az ad app create \
     --display-name "SpeechBridge (${ENV_NAME})" \
-    --sign-in-audience AzureADMyOrg \
+    --sign-in-audience "$SIGN_IN_AUDIENCE" \
     --web-redirect-uris "$REDIRECT_URI" \
     --enable-id-token-issuance true \
     --query appId -o tsv 2>/dev/null || true)
@@ -66,6 +78,7 @@ if [ -z "$CLIENT_ID" ]; then
 else
   echo "  using existing app registration ${CLIENT_ID}"
   az ad app update --id "$CLIENT_ID" --web-redirect-uris "$REDIRECT_URI" >/dev/null 2>&1 || true
+  az ad app update --id "$CLIENT_ID" --sign-in-audience "$SIGN_IN_AUDIENCE" >/dev/null 2>&1 || true
 fi
 
 # Configure built-in authentication through ARM directly. `az containerapp auth` lives in an
@@ -84,7 +97,7 @@ cat > "$BODY_FILE" <<JSON
         "enabled": true,
         "registration": {
           "clientId": "${CLIENT_ID}",
-          "openIdIssuer": "https://login.microsoftonline.com/${TENANT_ID}/v2.0"
+          "openIdIssuer": "${ISSUER}"
         },
         "validation": {
           "allowedAudiences": ["api://${CLIENT_ID}"]
@@ -110,4 +123,5 @@ else
 fi
 
 rm -f "$BODY_FILE"
+
 
