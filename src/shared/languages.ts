@@ -5,6 +5,10 @@
  * 2026-08-10 — voices via the TTS `voices/list` endpoint, translation codes via the
  * Translator `languages` endpoint. `npm run verify:voices` re-checks both and is the
  * detector that stops this list drifting from reality (docs/UNKNOWNS.md, U-10).
+ *
+ * Adding a voice here because the Azure voice gallery lists it is not enough. A voice can be
+ * advertised in a region and still refuse to synthesise there (ADR-0014), so `verify:voices`
+ * proves each one by generating real audio. Run it after any change to this file.
  */
 
 export type TextDirection = "ltr" | "rtl";

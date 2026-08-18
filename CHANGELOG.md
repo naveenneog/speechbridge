@@ -6,6 +6,14 @@ Format: [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Fixed
+- **The voice check now actually checks the voices.** `npm run verify:voices` asked the Azure
+  voice-list endpoint whether each catalog voice existed and reported success if it did. That
+  is not the same question as "does this voice work". Investigating why `en-IN-Diya` failed for
+  a user turned up an Azure voice that the `eastus2` catalogue advertises but the `eastus2`
+  synthesiser refuses with a bare HTTP 503 — it works from `centralindia`. A voice in that
+  state passed our check silently. Every catalog voice is now proven by synthesising real
+  audio with it, and a voice that was never probed counts as unproven rather than fine.
+  All 16 catalog voices verified under the new check. (ADR-0014)
 - **`azd provision` no longer breaks a running deployment.** The image parameter was not bound
   to azd's recorded image, so re-provisioning reset the container to a placeholder, created a
   revision that failed to activate, and — because ingress sends 100% of traffic to the latest

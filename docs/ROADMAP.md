@@ -49,6 +49,11 @@
 - [ ] P-12 Conversation transcript export (copy / download)
 - [ ] P-13 Device picker (choose microphone and output device)
 - [ ] P-14 Surface an empty translation result instead of dropping it silently
+- [x] P-15 Prove voice availability by synthesis, not by the voice list — **done, ADR-0014**
+      Triggered by a user report that `en-IN-Diya` would not work. Root cause was service-side
+      (advertised in `eastus2`, 503s there, works in `centralindia`), but it exposed that our own
+      U-10 detector trusted `voices/list` and would have passed the broken voice. `verify:voices`
+      now synthesises with every catalog voice; an unprobed voice counts as unproven.
 
 ## Later (ideas, not commitments)
 

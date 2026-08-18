@@ -219,7 +219,7 @@ credential endpoint has no user authentication there. That is deliberate — see
 ```bash
 npm test                  # unit tests
 npm run verify:e2e        # real speech through a real browser, both directions
-npm run verify:voices     # catalogue still matches the live service
+npm run verify:voices     # every catalogue voice must synthesise real audio
 npm run bench:synthesis   # re-measure the synthesis latency question
 node .ironclad/gate.mjs --stage packet     # the definition of done
 ```
@@ -260,7 +260,7 @@ when the wait is free — recovered 75% of the available win without the archite
 rewrite that fused synthesis would have required.
 Reasoning: [ADR-0009](docs/adr/0009-prewarm-synthesis-connection.md).
 
-### Two landmines documented so you do not lose an afternoon
+### Three landmines documented so you do not lose an afternoon
 
 1. **Node's native `WebSocket` breaks the Speech SDK.** Recognition dies with an unexplained
    `1006` because Node negotiates WebSocket-over-HTTP/2, which the service rejects. Browsers
@@ -269,6 +269,13 @@ Reasoning: [ADR-0009](docs/adr/0009-prewarm-synthesis-connection.md).
    its own output in a loop unless you mute the capture device — and filtering *results* is
    not enough, because audio captured during playback can finalise afterwards.
    ([ADR-0008](docs/adr/0008-gate-the-microphone-track.md))
+3. **A voice in the gallery is not necessarily a voice in your region.** The `voices/list`
+   endpoint can advertise a voice that the synthesiser in the *same* region refuses with a
+   bare HTTP 503 and an empty body — we hit this with `en-IN-Diya:DragonHDLatestNeural`, which
+   fails every time in `eastus2` and works every time in `centralindia`. If a voice 503s while
+   others in the same locale work, suspect a regional gap before suspecting your code. This is
+   why `npm run verify:voices` synthesises with every catalogue voice instead of trusting the
+   listing. ([ADR-0014](docs/adr/0014-voice-availability-proven-by-synthesis.md))
 
 ### Known limitations
 

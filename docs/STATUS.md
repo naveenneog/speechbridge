@@ -1,7 +1,7 @@
 # Status
 
-**Active packet:** none — M1 complete. Next up is P-8 (token refresh mid-session).
-**State:** GREEN — gate 26/26, working tree clean
+**Active packet:** none — P-15 delivered. Next up is P-8 (token refresh mid-session).
+**State:** GREEN — gate 26/26, 214 tests, working tree clean
 **Branch:** main
 
 ## M1 delivered
@@ -9,6 +9,31 @@
 - [x] P-0..P-6  Foundation, keyless token broker, mic gate, latency meter, conversation, UI
 - [x] P-7  Council review + security hardening (four real defects found and fixed)
 - [x] P-9  Synthesis benchmark → pre-warmed connections (ADR-0009)
+- [x] P-15 Voice availability proven by synthesis, not by the voice list (ADR-0014)
+
+## P-15 — the detector that could not detect (2026-08-18)
+
+A user asked why `en-IN-Diya:DragonHDLatestNeural` from the Azure voice gallery would not work.
+
+**Their answer:** it is advertised by the `eastus2` `voices/list` endpoint but the `eastus2`
+synthesiser refuses it with a bare HTTP 503 (0 ok / 8 attempts). The same voice works 4/4 from
+`centralindia`. Not the colon/DragonHD format (other such voices work), not Preview status
+(`en-IN-Lavanya` is also Preview and works), not capacity. A regional deployment gap.
+
+**Our problem, found while proving theirs:** `verify:voices` — the detector for U-10 — asserted
+only `liveVoices.has(lang.voice)`. It asked the catalogue whether a voice existed and then
+printed "verified against the live service". A voice in Diya's state passes that check while
+being unusable.
+
+Fixed: `src/shared/voiceAvailability.ts` (pure, 8 tests) plus a `verify:voices` that synthesises
+with every distinct catalog voice. An unprobed voice is a failure, not a pass; a sub-kilobyte
+body is a failure, not a pass.
+
+Verified two ways: all 16 catalog voices synthesise in `eastus2` (4,608–11,232 bytes each), and
+a mutation run that temporarily added Diya to the catalog failed with
+`HTTP 503 … the synthesiser refuses it`, exit 1 — where the old check passed.
+
+SpeechBridge itself was never affected: Diya is not in the catalog.
 
 **Measured, in Chromium against live Azure, both directions:**
 
@@ -77,8 +102,9 @@ UX: PASS-WITH-NOTES
 ## Commands that prove it
 
 ```powershell
-npm test                 # 167 unit tests
+npm test                 # 214 unit tests
 npm run coverage         # 80% floor enforced
+npm run verify:voices    # every catalog voice must synthesise real audio (ADR-0014)
 npm run verify:e2e       # real speech through a real browser, both directions
 npm run bench:synthesis  # re-ask the ADR-0009 question if Azure changes
 node .ironclad/gate.mjs --stage packet
